@@ -1,0 +1,5 @@
+device STM32F407ZG
+speed 4000
+connect
+r
+q

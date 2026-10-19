@@ -1,0 +1,5 @@
+speed 1000
+h
+savebin H:/STM32_LERN/19_OLED/OBJ/fw_read_stop.bin 0x08000000 0x5588
+g
+exit

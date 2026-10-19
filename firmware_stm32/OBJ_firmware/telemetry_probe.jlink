@@ -1,0 +1,4 @@
+device STM32F407ZG
+speed 4000
+mem32 0x20000080, 2
+q

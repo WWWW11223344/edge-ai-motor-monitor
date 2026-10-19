@@ -1,0 +1,29 @@
+# Keil / ARM 编译中间产物
+*.o
+*.d
+*.crf
+*.lst
+*.dep
+*.htm
+*.lnp
+*.axf
+*.elf
+*.map
+*.iex
+JLinkLog.txt
+*.uvguix.*
+ Listings/
+OBJ/*.o
+OBJ/*.crf
+OBJ/*.d
+
+# 临时与备份
+*.bak
+*.bak_*
+*.tmp
+__pycache__/
+.tmp_view/
+
+# 系统文件
+Thumbs.db
+.DS_Store

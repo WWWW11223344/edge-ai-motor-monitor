@@ -1,0 +1,1002 @@
+speed 1000
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+h
+mem32 0x20000040 2
+mem32 0x200000C0 2
+g
+Sleep 40
+exit

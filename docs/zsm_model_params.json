@@ -1,0 +1,27 @@
+{
+  "signal_len": 32,
+  "dimension": 1,
+  "input_size": 1,
+  "sensitivity": 1.0,
+  "threshold_ratio": 1.4500000476837158,
+  "z_mean_factor": 0.07000000029802322,
+  "z_max_factor": 0.4099999964237213,
+  "z_mean_threshold_min": 1.0,
+  "z_mean_threshold_max": 5.0,
+  "z_max_threshold_min": 3.0,
+  "z_max_threshold_max": 100.0,
+  "minimal_learning_calls": 2,
+  "z_score_norm": "abs",
+  "learning_call_cnt": 500,
+  "mean": [
+    13.330528259277344
+  ],
+  "std": [
+    0.10655135661363602
+  ],
+  "z_mean_threshold": 1.2061256170272827,
+  "z_max_threshold": 3.0,
+  "z_mean_cv": 0.8318107724189758,
+  "z_max_cv": 0.8318107724189758,
+  "m_cv": 498
+}

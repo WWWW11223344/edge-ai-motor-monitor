@@ -1,0 +1,5 @@
+speed 1000
+h
+mem32 0x200037C0 96
+g
+exit

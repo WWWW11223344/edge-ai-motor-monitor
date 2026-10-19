@@ -1,0 +1,4 @@
+device STM32F407ZG
+speed 4000
+connect
+savebin H:/STM32_LERN/19_OLED/OBJ/readback.bin 0x08000000 0x8000

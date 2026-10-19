@@ -1,0 +1,20 @@
+[
+  {
+    "pooling": {
+      "input_dimension": {
+        "n_samples": 500,
+        "n_features": 32,
+        "n_channels": 1
+      },
+      "output_dimension": {
+        "n_samples": 500,
+        "n_features": 1,
+        "n_channels": 1
+      },
+      "context": null,
+      "strategy": "mean",
+      "output_percentage": 5,
+      "n_windows": 1
+    }
+  }
+]
