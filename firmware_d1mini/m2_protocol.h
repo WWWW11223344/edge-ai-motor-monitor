@@ -1,4 +1,6 @@
-/* 2026-10-05：M2 二进制原始遥测协议，服务于 19 维特征链路。 */
+/* 2026-10-05：M2 二进制原始遥测协议，服务于板上 AI 的特征链路。
+ * 2026-10-19 起 AI 输入改为「32 点转速单变量 R」，帧格式保持不变；
+ * 加速度三槽（bit1~bit3）随之停写，恒为 0。 */
 #ifndef M2_PROTOCOL_H   /* 头文件保护：防止重复包含 */
 #define M2_PROTOCOL_H   /* 定义保护宏 */
 
@@ -18,12 +20,12 @@ extern "C" {   /* 保持 C 符号名 */
 #define M2_FRAME_MAX       M2_FRAME_SIZE   /* 接收缓冲上限，与整帧长度一致 */
 #define M2_TIMEOUT_MS      3000U   /* 超过此时长未收到新帧即判定链路超时 */
 #define M2_VALID_CURRENT   (1U << 0)   /* 有效位 0：电流 */
-#define M2_VALID_ACCEL_X   (1U << 1)   /* 有效位 1：加速度 X */
-#define M2_VALID_ACCEL_Y   (1U << 2)   /* 有效位 2：加速度 Y */
-#define M2_VALID_ACCEL_Z   (1U << 3)   /* 有效位 3：加速度 Z */
+#define M2_VALID_ACCEL_X   (1U << 1)   /* 有效位 1：加速度 X（2026-10-19 起恒为 0） */
+#define M2_VALID_ACCEL_Y   (1U << 2)   /* 有效位 2：加速度 Y（2026-10-19 起恒为 0） */
+#define M2_VALID_ACCEL_Z   (1U << 3)   /* 有效位 3：加速度 Z（2026-10-19 起恒为 0） */
 #define M2_VALID_SPEED     (1U << 4)   /* 有效位 4：转速 */
 #define M2_VALID_BATTERY   (1U << 5)   /* 有效位 5：母线电压 */
-#define M2_VALID_ALL       0x3FU   /* 6 个测量值全部有效时的掩码 */
+#define M2_VALID_ALL       0x3FU   /* 历史定义：6 个测量值全有效（现只用 bit0/4/5） */
 
 /* 保留控制字节 15：承载板上 AI 的阶段与报警标志。 */
 #define M2_AI_OFF          0U   /* AI 未启用 */
@@ -39,9 +41,9 @@ typedef struct {   /* M2 定长数据帧 */
     uint32_t uptimeMs;   /* 板端运行毫秒数（上电起算） */
     uint8_t level;   /* 档位 0~4 */
     uint8_t duty;   /* 占空比百分数 0~88 */
-    uint8_t validMask;   /* 6 个测量值的有效位掩码 */
+    uint8_t validMask;   /* 有效位掩码（现只用 bit0 电流 / bit4 转速 / bit5 母线） */
     uint8_t aiState;   /* AI 阶段 + 报警标志 */
-    int32_t value[6];   /* 6 个测量值（电流 / 加速度 XYZ / 转速 / 母线电压，各自定标） */
+    int32_t value[6];   /* 6 个测量值；加速度三槽已停写，槽位保留以兼容帧格式 */
 } M2Frame;   /* M2Frame 结构体结束 */
 
 typedef struct {   /* 接收器状态（逐字节状态机） */

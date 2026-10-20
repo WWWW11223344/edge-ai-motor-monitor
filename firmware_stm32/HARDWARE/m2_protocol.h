@@ -10,7 +10,9 @@
                [4..7] 帧序号 seq，[8..11] 开机毫秒 uptimeMs，
                [12] 档位 level，[13] 占空比 duty(0~88)，[14] 有效位 validMask，
                [15] AI 状态 aiState，[16..39] 6 个 int32 测量值（小端）：
-               电流mA / 加速度X,Y,Z(mg) / 转速x10 / 母线电压mV，[40..41] CRC 校验。
+                电流mA / 加速度X,Y,Z(mg) / 转速x10 / 母线电压mV，[40..41] CRC 校验。
+               注意：加速度三槽自 2026-10-19 起不再写入（MPU6050 已摘除），
+               帧长与槽位保持不变以兼容旧接收端，实际只有 电流 / 转速 / 母线 三路有效。
                CRC 覆盖 [2] 起 38 字节，不含帧头与 CRC 本身。
   Function List:
     1. m2_crc()        计算 CCITT-FALSE 校验值
@@ -50,16 +52,17 @@ extern "C" {        /* 保持 C 符号名 */
 
 /* 【有效位 validMask：哪几个测量值这次是真的】
  *    bit0 电流  bit1 X  bit2 Y  bit3 Z  bit4 转速  bit5 电压
+ *    现状（2026-10-19 起）：bit1~bit3 恒为 0（振动模块已摘除），实际只用 bit0 / bit4 / bit5。
  * 某位是 0 表示「这一路这次没采到 / 数据无效」，
  * 接收方必须显示成空（null），绝不能当 0 —— 0 会被误读成真实测量值。
- * M2_VALID_ALL(0x3F) 表示 6 路全部有效。 */
+ * M2_VALID_ALL(0x3F) 是历史定义（6 路全有效），现固件永远不会达到该值。 */
 #define M2_VALID_CURRENT   (1U << 0)
 #define M2_VALID_ACCEL_X   (1U << 1)
 #define M2_VALID_ACCEL_Y   (1U << 2)  /* bit2：Y 轴加速度 */
 #define M2_VALID_ACCEL_Z   (1U << 3)  /* bit3：Z 轴加速度 */
 #define M2_VALID_SPEED     (1U << 4)  /* bit4：转速 */
 #define M2_VALID_BATTERY   (1U << 5)  /* bit5：母线电压 */
-#define M2_VALID_ALL       0x3FU        /* 6 路测量值全部有效 */
+#define M2_VALID_ALL       0x3FU        /* 历史定义：6 路全有效（现只用 bit0/4/5） */
 
 /* 【AI 状态 aiState：借用第 15 字节】
  *    bit0..1  阶段：0=未启用 1=学习中 2=检测中 3=错误
@@ -80,7 +83,7 @@ typedef struct {
     uint32_t uptimeMs;     /* 发送时刻的开机毫秒数 */
     uint8_t level;        /* 档位：0 或 1 */
     uint8_t duty;         /* 实际输出占空比百分数 0~88 */
-    uint8_t validMask;    /* 6 路测量值的有效位，见 M2_VALID_xxx */
+    uint8_t validMask;    /* 有效位，见 M2_VALID_xxx（现只用 bit0/4/5） */
     uint8_t aiState;      /* 板上 AI 状态：bit0~1 阶段，bit2 报警 */
     int32_t value[6];     /* 6 个测量值，顺序见文件头 */
 } M2Frame;

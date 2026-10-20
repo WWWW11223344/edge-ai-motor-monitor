@@ -17,8 +17,10 @@
  *    link               waiting / live / stale（链路状态）
  *    age_ms             距最近一帧过了多少毫秒（没有帧则为 null）
  *    level / duty       当前档位 / 占空比百分数
- *    feature_valid_mask 6 个测量值的有效位（63 = 0x3F = 全有效）
+ *    feature_valid_mask 有效位掩码。历史满值是 63（0x3F），但加速度三位已停用，
+ *                       当前实际满值是 49（0x31 = 电流 + 转速 + 母线）
  *    current_mA / accel_x_mg / accel_y_mg / accel_z_mg / rpm_x10 / battery_mV   （6 个测量值字段名）
+ *                       加速度三个字段（accel_*_mg）自 2026-10-19 起恒为 null，网页已不再展示
  *                       6 个测量值（注意单位：毫安、毫克、转速x10、毫伏）
  *    ai_phase / ai_alarm  板上 AI 阶段 / 是否报警（0/1）
  *    frames / rejected  累计收下的帧数 / 被拒收的帧数

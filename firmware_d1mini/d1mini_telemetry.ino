@@ -321,7 +321,8 @@ static bool parse_uint32_arg(const String &text, uint32_t *value)
  *   该位为 1 -> 输出数字
  *   该位为 0 -> 输出 null（那一刻 STM32 没采到或数据无效，不能当 0 用）
  * 6 个值的顺序（与 m2_protocol.h 一致）：
- *   0=电流mA  1=加速度Xmg  2=加速度Ymg  3=加速度Zmg  4=转速x10  5=母线电压mV */
+ *   0=电流mA  1=加速度Xmg  2=加速度Ymg  3=加速度Zmg  4=转速x10  5=母线电压mV
+ * 其中 1~3 号槽（加速度）自 2026-10-19 起不再写入，网页只展示 0/4/5 三路。 */
 static void format_raw_value(const M2Frame *frame, unsigned index,
     char *buffer, size_t capacity)
 {

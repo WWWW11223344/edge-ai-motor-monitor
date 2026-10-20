@@ -143,7 +143,7 @@ uint8_t feature_r_tick(float rpm, float vbat_v, uint8_t vbat_valid,
   Calls:         无
   Called By:     ai_monitor 层（接新模型后）；上位机调试时也可调用
   Input:         capacity —— output 能容纳的元素个数（不是字节）
-  Output:        output —— 16 个 float，下标 0 最旧、下标 15 最新
+  Output:        output —— 32 个 float，下标 0 最旧、下标 31 最新
   Return:        1 = 窗口已满且已写出；0 = 参数不合法或窗口未满
   Others:        窗口未满时不交半窗数据（它们前面还没有历史，
                  形状与训练时不一致），且失败时不动 output。

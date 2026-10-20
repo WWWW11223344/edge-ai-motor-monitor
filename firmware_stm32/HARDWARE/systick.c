@@ -48,7 +48,7 @@ void SysTick_Init(void)
   Description:   微秒级阻塞延时。向 LOAD 装载计数值后启动计数器，
                  轮询 CTRL 寄存器的 COUNTFLAG 位等待计数结束。
   Calls:         无
-  Called By:     需要微秒级等待的驱动（OLED / MPU6050 的软件 I2C 时序）
+  Called By:     需要微秒级等待的驱动（OLED 的软件 I2C 时序）
   Input:         nTime —— 延时微秒数，需满足 nTime * 21 <= 0xFFFFFF（约 79 万）
   Output:        无
   Return:        无
