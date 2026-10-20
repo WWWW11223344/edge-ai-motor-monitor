@@ -1,135 +1,236 @@
 /* ==========================================================================
  *  monitor_page.h  --  手机看板网页（一整个 HTML 页面，直接编译进固件里）
  *
- *  【这是什么】一个完整的单页网页：手机连上 D1 的热点/同一 WiFi，
+ *  【这是什么】一个完整的单页网页：手机连上 D1 的热点 / 同一 WiFi，
  *    浏览器打开 http://192.168.4.1 就能看到电机的实时数据。
  *
  *  【三个设计约束，决定了它长这样】
  *    ① 全部自带：CSS 和 JS 都写在页面里，不引用任何外部网址。
  *       现场没有外网也能正常打开（这是嵌入式页面最重要的一条）。
  *    ② 放在 Flash 里：数组用 PROGMEM 声明，不占宝贵的 RAM。
- *       页面内容用「原生字符串字面量」(raw string，起止标记里带 HTML 分隔符)包起来，
+ *       页面内容用「原生字符串字面量」(raw string) 包起来，
  *       这样里面的引号、反斜杠都不用转义，写起来和普通 HTML 一样。
  *    ③ 只读：页面只做 GET /status，没有任何会改数据的按钮。
  *
- *  【页面结构】
- *    顶部标题 + 一个状态圆点（绿=通信正常，红=中断）
- *    中间 10 张读数卡片：档位、占空比、转速、电流、X/Y/Z 加速度、母线电压、AI 状态、报警
- *    中间一行提示文字：数据不全时提示「部分测量无效」，报警时提示「检测到异常」
- *    底部统计：数据年龄、有效帧数、异常帧数、版本号
+ *  【页面结构（2026-10-20 重做）】
+ *    顶部：标题 + 链路状态胶囊（绿=通信正常，红=中断）
+ *    AI 判定主卡：正常 / 学习中 / 异常 / 待机 / 未启用 / 推理故障，六种状态分色
+ *    六格读数：转速、电流、母线电压、特征比值 R、档位、占空比
+ *    底部：数据年龄、有效帧 / 异常帧、固件版本
+ *
+ *  【为什么没有加速度了】
+ *    MPU6050 已于 2026-10-19 从 STM32 固件摘除（HARDWARE/_removed_mpu6050_20261019），
+ *    帧里 accel_x/y/z 三路的有效位恒为 0，永远只能显示「--」。
+ *    页面直接不再展示，改展示「特征比值 R」——那才是 AI 真正的输入。
+ *
+ *  【编码铁律】本文件必须保存为 UTF-8（无 BOM），页面里已声明 charset=utf-8。
+ *    一旦被编辑器改存成 GBK，手机上打开中文会全部乱码。
  *
  *  【数据怎么来的】页内 JS 每秒 fetch('/status') 一次（带 2.2 秒超时），
- *    把返回的 JSON 填到各个 <span> 里；拿到 null 就显示「--」。
+ *    把返回的 JSON 填到各个元素里；拿到 null 就显示「--」。
  * ========================================================================== */
-/* 2026-10-05：自包含的手机端监控页，用于展示 M2 遥测帧里的六个测量字段。 */
 #ifndef MONITOR_PAGE_H /* 重复包含保护：首次进来时该宏尚未定义 */
 #define MONITOR_PAGE_H /* 定义包含标记，之后再 #include 本文件时上面那条 #ifndef 即为假 */
 /* 【这行是整个页面的容器】
- *   static const char MONITOR_PAGE[]                    页面字节数组
- *   PROGMEM                                             放到 Flash 而不是 RAM
- *   = 「原生字符串字面量」                                 原样保留，不做转义处理
- * 页面里所有中文都写成 &#xxxxx; 这种数字实体（例如 &#30005; = 电），
- * 这样无论源文件是什么编码，浏览器看到的中文都一定正确。
- * 【注意】修改这个页面时不要动开头和结尾的起止标记，
- * 也不要让页面里出现「右括号+HTML+引号」这一串字符（那会提前结束字符串）。 */
-/* 【页面正文起点】从下面这行的 R"HTML( 到文件末尾的 )HTML" 之间是页面正文
+ *   static const char MONITOR_PAGE[]   页面字节数组
+ *   PROGMEM                            放到 Flash 而不是 RAM
+ *   R"HTML( ... )HTML"                 「原生字符串字面量」，原样保留、不做转义
+ * 【注意】修改页面时不要动开头和结尾的起止标记，
+ * 也不要让页面正文里出现「右括号 + HTML + 双引号」这一串字符（那会提前结束字符串）。
+ * 【页面正文起点】从下面这行的 R"HTML( 到文件末尾的 )HTML" 之间是页面正文
  *  （HTML + CSS + JavaScript），属于字符串数据而不是 C++ 代码，
- *  因此页面内部的说明一律用 HTML / CSS / JS 各自的注释语法书写，
- *  不要在这里插 C++ 注释（那会变成下发给浏览器的文本，还会撑大固件）。 */
+ *  因此页面内部的说明一律用 HTML / CSS / JS 各自的注释语法书写。 */
 static const char MONITOR_PAGE[] PROGMEM = R"HTML(<!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<!-- head 区：声明 UTF-8 编码 + 手机自适应视口 + 页面样式（CSS） -->
-<title>&#30005;&#26426;&#29366;&#24577;&#30417;&#27979;</title><style>
-*{box-sizing:border-box}body{margin:0;background:#f4f6f6;color:#20272b;font:16px system-ui,sans-serif;letter-spacing:0}
-main{max-width:760px;margin:auto;padding:24px 20px}h1{font-size:24px;margin:0 0 18px;line-height:1.4}
-#link{display:flex;align-items:center;gap:10px;border-bottom:1px solid #cbd2d5;padding:0 0 20px;min-height:48px}
-#dot{width:10px;height:10px;border-radius:50%;background:#777;flex:none}body[data-link=live] #dot{background:#158057}
-body[data-link=stale] #dot,body[data-link=offline] #dot{background:#be442c}.readings{margin:0;display:grid;grid-template-columns:1fr 1fr;gap:0 28px}
-.reading{min-width:0;padding:20px 0;border-bottom:1px solid #d3dadd}dt{font-size:14px;color:#5a646b}
-dd{margin:8px 0 0;font-size:25px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;min-height:36px}
-small{font-size:14px;color:#60686c}#condition{min-height:24px;margin:18px 0;color:#8f4822}
-#ai_alarm.bad{color:#be442c;font-weight:700}
-.meta{font-size:13px;color:#626a70;line-height:1.8;overflow-wrap:anywhere}.meta span{font-variant-numeric:tabular-nums}
-@media(max-width:380px){main{padding:20px 14px}.readings{gap:0 16px}dd{font-size:21px}}
-</style></head><body data-link="waiting"><main>
-<h1>&#30005;&#26426;&#29366;&#24577;&#30417;&#27979;</h1>
-<!-- 顶部状态条：一个圆点 + 一行文字
-     圆点颜色由 <body> 上的 data-link 属性驱动（live 绿 / stale 红 / offline 红） -->
-<div id="link" role="status"><span id="dot" aria-hidden="true"></span><span id="linkText">&#31561;&#24453;&#25968;&#25454;</span></div>
-<!-- 十张读数卡片。每张是一个 .reading：一行标题(dt) + 一行大数字(dd)。
-     这些 span 的 id 和 /status 返回的 JSON 字段名一一对应，
-     下面的 JS 就是按 id 去找这些元素填数字的。 -->
-<dl class="readings">
-<div class="reading"><dt>&#26723;&#20301;</dt><dd id="level">--</dd></div>
-<div class="reading"><dt>&#24403;&#21069;&#21344;&#31354;&#27604;</dt><dd><span id="duty">--</span> <small>%</small></dd></div>
-<div class="reading"><dt>&#36716;&#36895;</dt><dd><span id="rpm_x10">--</span> <small>rpm</small></dd></div>
-<div class="reading"><dt>&#30005;&#27969;</dt><dd><span id="current_mA">--</span> <small>A</small></dd></div>
-<div class="reading"><dt>X &#21152;&#36895;&#24230;</dt><dd><span id="accel_x_mg">--</span> <small>g</small></dd></div>
-<div class="reading"><dt>Y &#21152;&#36895;&#24230;</dt><dd><span id="accel_y_mg">--</span> <small>g</small></dd></div>
-<div class="reading"><dt>Z &#21152;&#36895;&#24230;</dt><dd><span id="accel_z_mg">--</span> <small>g</small></dd></div>
-<div class="reading"><dt>&#27597;&#32447;&#30005;&#21387;</dt><dd><span id="battery_mV">--</span> <small>V</small></dd></div>
-<div class="reading"><dt>AI &#29366;&#24577;</dt><dd id="ai_phase">--</dd></div>
-<div class="reading"><dt>&#24322;&#24120;&#25253;&#35686;</dt><dd id="ai_alarm">--</dd></div>
-<!-- 中间那行提示文字：由 JS 动态填
-     例如「部分流量无效」「检测到异常，请检查电机」 -->
-</dl><p id="condition" role="status"></p>
-<!-- 底部统计信息：数据年龄（秒）、累计有效帧、累计异常帧、固件版本 -->
-<div class="meta">&#25968;&#25454;&#24180;&#40836; <span id="age">--</span> s<br>
-&#26377;&#25928;&#24103; <span id="frames">0</span> &middot; &#24322;&#24120;&#24103; <span id="rejected">0</span><br>
-<!-- ======================= 页面脚本（JavaScript） =======================
-     逻辑很简单，三块：
-       ① specs / aiPhaseText：定义每个测量值的「整除系数」和显示位数，以及 AI 阶段的中文说法
-       ② show(d)：把 /status 返回的 JSON 填进页面
-       ③ refresh()：每秒请求一次 /status，带 2.2 秒超时；失败就显示「连接中断」
-     【为什么要有超时】WiFi 信号差的时候 fetch 可能永远不返回，
-     不给超时页面就会一直停在旧数据上，看起来像「卡死」。 -->
-<span id="version">d1-telemetry-2.0.0</span></div></main><script>
-'use strict';
-// 每个测量值的显示换算规则：[整除系数, 保留小数位]
-// 因为协议里传的都是整数（省带宽），显示时要除回来：
-//   电流 mA / 1000 = 安培，保留 3 位小数
-//   加速度 mg / 1000 = g，保留 3 位；转速 x10 / 10 = rpm，保留 1 位
-//   母线电压 mV / 1000 = 伏，保留 2 位
-const specs={current_mA:[1000,3],accel_x_mg:[1000,3],accel_y_mg:[1000,3],accel_z_mg:[1000,3],rpm_x10:[10,1],battery_mV:[1000,2]};
-// AI 阶段的显示文字：和 status_json.cpp 里输出的 off/learning/detecting/error 一一对应
-// 用 \u 转义写中文，避免页面编码出问题
-const aiPhaseText={off:'\u672a\u542f\u7528',learning:'\u5b66\u4e60\u4e2d',detecting:'\u68c0\u6d4b\u4e2d',error:'\u9519\u8bef'};
-const el=id=>document.getElementById(id);
-function clearReadings(){for(const k of ['level','duty','ai_phase','ai_alarm',...Object.keys(specs)])el(k).textContent='--';el('ai_alarm').classList.remove('bad');}
-// show(d)：收到 /status 的 JSON 后，把页面刷新一遍
-// 步骤：校验 link 字段是否合法 -> 更新 body 的 data-link（驱动圆点颜色）
-//       -> 更新状态文字 -> 先清空所有读数 -> 只有 live 时才填真实数字
-//       -> 置空的位置显示「--」，报警时给「⚠ 报警」加红色样式
-function show(d){
- if(!['waiting','live','stale'].includes(d.link))throw Error('Bad status');
- document.body.dataset.link=d.link;
- el('linkText').textContent={waiting:'\u7b49\u5f85 STM32 \u6570\u636e',live:'\u901a\u4fe1\u6b63\u5e38',stale:'STM32 \u901a\u4fe1\u4e2d\u65ad'}[d.link];
- clearReadings();
- if(d.link==='live'){
-  el('level').textContent='L'+d.level;el('duty').textContent=d.duty;
-  for(const [k,[scale,digits]] of Object.entries(specs))el(k).textContent=d[k]===null?'--':(d[k]/scale).toFixed(digits);
-  el('ai_phase').textContent=d.ai_phase==='null'?'--':(aiPhaseText[d.ai_phase]||d.ai_phase);
-  const alarm=d.ai_alarm===1;
-  el('ai_alarm').textContent=alarm?'\u26a0 \u62a5\u8b66':'\u6b63\u5e38';
-  el('ai_alarm').classList.toggle('bad',alarm);
- }
- let condition='';
- if(d.link==='live'&&d.feature_valid_mask!==63)condition='\u90e8\u5206\u6d4f\u91cf\u65e0\u6548';
- if(d.link==='live'&&d.ai_alarm===1)condition=(condition?condition+' \u00b7 ':'')+'\u68c0\u6d4b\u5230\u5f02\u5e38\uff0c\u8bf7\u68c0\u67e5\u7535\u673a';
- el('condition').textContent=condition;
- el('age').textContent=d.age_ms===null?'--':(d.age_ms/1000).toFixed(1);
- el('frames').textContent=d.frames;el('rejected').textContent=d.rejected;el('version').textContent=d.version;
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f2f3f5" media="(prefers-color-scheme:light)">
+<meta name="theme-color" content="#0f1115" media="(prefers-color-scheme:dark)">
+<title>电机状态监测</title><style>
+/* 配色全部走 CSS 变量：浅色 / 深色各一套，手机跟随系统自动切换 */
+:root{
+  --bg:#f2f3f5;--card:#ffffff;--ink:#12161c;--muted:#6b7480;--line:#e4e7eb;
+  --ok:#0b7d5a;--ok-bg:#e4f5ee;
+  --warn:#9a6206;--warn-bg:#fdf2df;
+  --bad:#c2341c;--bad-bg:#fdeae7;
+  --idle:#6b7480;--idle-bg:#e9ecef;
 }
-// refresh()：每秒轮询一次（自己调用自己，形成无限循环）
-// r.ok 为假（比如 500）也当失败处理；失败时把页面切到 offline 并清空读数，
-// 这样「数据是旧的」和「真断了」能一眼区分开。
-// 无论成功失败，finally 里都会在 1 秒后再调一次 refresh()。
-async function refresh(){
- const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),2200);
- try{const r=await fetch('/status',{cache:'no-store',signal:controller.signal});if(!r.ok)throw Error('HTTP');show(await r.json());}
- catch(e){document.body.dataset.link='offline';el('linkText').textContent='\u624b\u673a\u4e0e D1 \u8fde\u63a5\u4e2d\u65ad';clearReadings();el('age').textContent='--';el('condition').textContent='';}
- finally{clearTimeout(timer);setTimeout(refresh,1000);}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0f1115;--card:#181c22;--ink:#f2f4f7;--muted:#98a2b0;--line:#252b34;
+    --ok:#3fd39b;--ok-bg:#11322a;
+    --warn:#f0b357;--warn-bg:#33280f;
+    --bad:#ff6b57;--bad-bg:#3a1a16;
+    --idle:#98a2b0;--idle-bg:#212730;
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--ink);-webkit-text-size-adjust:100%;
+  font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+main{max-width:560px;margin:0 auto;padding:18px 16px 26px}
+
+/* ---------- 顶部：标题 + 链路状态胶囊 ---------- */
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:2px 2px 14px}
+h1{margin:0;font-size:20px;font-weight:650;letter-spacing:.01em}
+#pill{display:inline-flex;align-items:center;gap:7px;flex:none;padding:7px 12px;
+  border-radius:999px;background:var(--idle-bg);color:var(--idle);font-size:13px;font-weight:600;
+  transition:background .2s,color .2s;white-space:nowrap}
+#pill i{width:8px;height:8px;border-radius:50%;background:currentColor;flex:none}
+body[data-link=live] #pill{background:var(--ok-bg);color:var(--ok)}
+body[data-link=stale] #pill,body[data-link=offline] #pill{background:var(--bad-bg);color:var(--bad)}
+
+/* ---------- AI 判定主卡 ---------- */
+#state{background:var(--card);border:1px solid var(--line);border-radius:18px;
+  padding:18px 20px 19px;margin-bottom:10px;transition:background .25s,border-color .25s}
+#state .cap{font-size:12px;font-weight:700;letter-spacing:.12em;color:var(--muted)}
+#stateTitle{font-size:30px;font-weight:700;line-height:1.2;margin:7px 0 3px;
+  font-variant-numeric:tabular-nums;transition:color .25s}
+#stateSub{font-size:13px;color:var(--muted);min-height:19px}
+body[data-state=ok] #state{background:var(--ok-bg);border-color:transparent}
+body[data-state=ok] #stateTitle{color:var(--ok)}
+body[data-state=learn] #state{background:var(--warn-bg);border-color:transparent}
+body[data-state=learn] #stateTitle{color:var(--warn)}
+body[data-state=alarm] #state{background:var(--bad-bg);border-color:transparent;
+  animation:breathe 1.5s ease-in-out infinite}
+body[data-state=alarm] #stateTitle{color:var(--bad)}
+@keyframes breathe{0%,100%{opacity:1}55%{opacity:.66}}
+
+/* ---------- 六格读数 ---------- */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cell{background:var(--card);border:1px solid var(--line);border-radius:14px;
+  padding:13px 15px 14px;min-width:0}
+.cell b{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:6px}
+.cell p{margin:0;font-size:25px;font-weight:650;line-height:1.15;white-space:nowrap;
+  font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.cell p .u{font-size:13px;font-weight:600;color:var(--muted);margin-left:4px}
+
+/* ---------- 底部 ---------- */
+#cond{margin:14px 2px 0;font-size:13px;line-height:1.5;color:var(--warn)}
+#cond:empty{display:none}
+footer{margin-top:14px;padding:0 2px;font-size:12.5px;color:var(--muted);line-height:1.85}
+footer div{display:flex;justify-content:space-between;gap:12px}
+footer span{font-variant-numeric:tabular-nums}
+#ver{opacity:.72;font-size:11.5px;margin-top:5px}
+</style></head><body data-link="waiting" data-state="idle"><main>
+
+<header>
+  <h1>电机状态监测</h1>
+  <div id="pill"><i></i><span id="linkText">等待数据</span></div>
+</header>
+
+<!-- AI 判定主卡：标题由 ai_phase / ai_alarm 决定，配色由 body[data-state] 驱动 -->
+<section id="state">
+  <div class="cap">运行判定</div>
+  <div id="stateTitle">--</div>
+  <div id="stateSub"></div>
+</section>
+
+<!-- 六格读数：只保留 STM32 当前真正在采的三路 + 档位/占空比 + 特征比值 -->
+<div class="grid">
+  <div class="cell"><b>转速</b><p><span id="rpm">--</span><span class="u">rpm</span></p></div>
+  <div class="cell"><b>电流</b><p><span id="current">--</span><span class="u">A</span></p></div>
+  <div class="cell"><b>母线电压</b><p><span id="bus">--</span><span class="u">V</span></p></div>
+  <div class="cell"><b>特征比值 R</b><p><span id="ratio">--</span><span class="u">rpm/V</span></p></div>
+  <div class="cell"><b>档位</b><p><span id="level">--</span></p></div>
+  <div class="cell"><b>当前占空比</b><p><span id="duty">--</span><span class="u">%</span></p></div>
+</div>
+
+<p id="cond" role="status"></p>
+
+<footer>
+  <div><span>数据年龄</span><span><span id="age">--</span> s</span></div>
+  <div><span>有效帧 / 异常帧</span><span><span id="frames">0</span> / <span id="rejected">0</span></span></div>
+  <div id="ver"><span id="version">d1-telemetry-2.0.0</span></div>
+</footer>
+</main><script>
+'use strict';
+var el=function(id){return document.getElementById(id);};
+/* 链路状态的文字：对应 /status 的 link 字段 */
+var LINK={waiting:'等待数据',live:'通信正常',stale:'通信中断'};
+/* 判定主卡的三段文字：[大标题, 副标题] */
+var STATE={
+  ok:['正常','AI 在线监测，未发现异常'],
+  learn:['学习中','正在建立基准，保持正常运转约 3 秒'],
+  alarm:['异常','检测到状态异常，请检查电机负载'],
+  idle:['待机','等待电机启动'],
+  off:['AI 未启用','固件未加载异常检测模型'],
+  err:['推理故障','AI 运行异常，建议重启设备']
+};
+/* 当前在用的三路测量值有效位：bit0 电流 | bit4 转速 | bit5 母线电压
+ * （加速度三位已随 MPU6050 摘除，恒为 0，不再参与判断） */
+var CH_CURRENT=0x01,CH_SPEED=0x10,CH_BUS=0x20;
+
+function setState(k){
+  document.body.dataset.state=k;
+  el('stateTitle').textContent=STATE[k][0];
+  el('stateSub').textContent=STATE[k][1];
+}
+function clearReadings(){
+  var ids=['rpm','current','bus','ratio','level','duty'],i;
+  for(i=0;i<ids.length;i++){el(ids[i]).textContent='--';}
+}
+/* 按状态码决定主卡该显示哪一态 */
+function pickState(d){
+  if(d.ai_alarm===1){return 'alarm';}
+  if(d.ai_phase==='learning'){return 'learn';}
+  if(d.ai_phase==='off'){return 'off';}
+  if(d.ai_phase==='error'){return 'err';}
+  return 'ok';
+}
+function show(d){
+  if(['waiting','live','stale'].indexOf(d.link)<0){throw new Error('Bad status');}
+  document.body.dataset.link=d.link;
+  el('linkText').textContent=LINK[d.link];
+  clearReadings();
+  el('age').textContent=(d.age_ms===null?'--':(d.age_ms/1000).toFixed(1));
+  el('frames').textContent=d.frames;
+  el('rejected').textContent=d.rejected;
+  el('version').textContent=d.version;
+  el('cond').textContent='';
+
+  if(d.link!=='live'){
+    setState('idle');
+    /* 链路状态和主卡文字分开说：主卡说「判定不出结果」，胶囊说「为什么」 */
+    el('stateSub').textContent=(d.link==='stale'?'STM32 已停止发送数据':'等待 STM32 上电');
+    return;
+  }
+
+  var rpm=d.rpm_x10,mv=d.battery_mV;
+  el('rpm').textContent=(rpm===null?'--':(rpm/10).toFixed(1));
+  el('current').textContent=(d.current_mA===null?'--':(d.current_mA/1000).toFixed(3));
+  el('bus').textContent=(mv===null?'--':(mv/1000).toFixed(2));
+  /* 特征比值 R = 转速 / 母线电压，与板上 AI 的输入完全一致；停转时不显示 0，避免误读 */
+  el('ratio').textContent=((rpm>0&&mv>0)?(rpm*100/mv).toFixed(2):'--');
+  el('level').textContent='L'+d.level;
+  el('duty').textContent=d.duty;
+
+  var st=pickState(d);
+  setState(st);
+  if(st==='ok'&&rpm===0&&d.duty===0){el('stateSub').textContent='电机已停转，等待启动';}
+
+  /* 逐路点名：缺哪一路就说哪一路，比笼统的「部分测量无效」有用 —— 一眼能对上接线 */
+  var miss=[],mask=d.feature_valid_mask;
+  if((mask&CH_CURRENT)===0){miss.push('电流');}
+  if((mask&CH_SPEED)===0){miss.push('转速');}
+  if((mask&CH_BUS)===0){miss.push('母线电压');}
+  if(miss.length>0){el('cond').textContent='未采到：'+miss.join(' / ')+'（检查对应接线）';}
+}
+/* 每秒拉一次 /status，2.2 秒超时；超时或失败即判定连接中断 */
+function refresh(){
+  var controller=new AbortController();
+  var timer=setTimeout(function(){controller.abort();},2200);
+  fetch('/status',{cache:'no-store',signal:controller.signal})
+    .then(function(r){if(!r.ok){throw new Error('HTTP');}return r.json();})
+    .then(show)
+    .catch(function(){
+      document.body.dataset.link='offline';
+      el('linkText').textContent='连接中断';
+      clearReadings();setState('idle');
+      el('stateSub').textContent='手机与 D1 的连接已断开';
+      el('age').textContent='--';el('cond').textContent='';
+    })
+    .then(function(){clearTimeout(timer);setTimeout(refresh,1000);});
 }
 refresh();
-</script></body></html>)HTML"; /* 页面字符串在此闭合：)HTML 收尾，分号结束上面那条变量定义 */
+</script></body></html>
+)HTML"; /* 页面字符串在此闭合：)HTML 收尾，分号结束上面那条变量定义 */
 #endif /* MONITOR_PAGE_H 条件编译段结束 */
