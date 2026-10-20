@@ -54,8 +54,26 @@ dataset/            NanoEdge AI Studio 训练数据集 (32 列, 无表头无标�
   R32_regular_normal.csv       正常运转 1000 窗
   R32_abnormal_grip.csv        捏轴堵转异常 500 窗
   R32_test_normal_batch06.csv  独立验证 569 窗
-docs/               硬件连接图 / 程序流程图 / ZSM 模型参数
+docs/               文档与图示
+  项目计划书.md / 答辩问答_完整版.md      毕业设计文档
+  上板实测报告.md                         实测数据与结论
+  单变量异常检测方案 / 数据集核对 / 标定报告  特征选型与标定过程
+  zsm_model_params.json                   ZSM 模型参数 (可复现)
+  硬件连接图 / 程序流程图 / 硬件采购清单     PNG + SVG 双格式
 ```
+
+## 编译产物尺寸
+
+Keil 最终构建 (`USER/build_r64.log`)：
+
+| 段 | 大小 |
+|---|---|
+| Code | 17872 B |
+| RO | 3480 B |
+| RW | 212 B |
+| ZI | 14220 B |
+
+NanoEdge AI 模型占用：RAM 56 B / Flash 40 B，`learning_min_iteration = 16`。
 
 ## 实测效果
 
