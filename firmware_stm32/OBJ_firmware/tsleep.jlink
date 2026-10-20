@@ -1,4 +1,0 @@
-speed 1000
-Sleep 300
-mem8 0x20000084 2
-exit

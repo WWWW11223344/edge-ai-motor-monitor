@@ -1,4 +1,0 @@
-speed 1000
-mem32 0x200000C0 8
-mem32 0x2000215C 32
-exit

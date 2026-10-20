@@ -1,7 +1,0 @@
-speed 1000
-mem32 2000007C 2
-mem32 200000DC 11
-Sleep 700
-mem32 2000007C 2
-mem32 200000DC 11
-exit

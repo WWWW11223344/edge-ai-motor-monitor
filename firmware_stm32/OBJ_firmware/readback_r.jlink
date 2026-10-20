@@ -1,5 +1,0 @@
-device STM32F407ZG
-speed 1000
-h
-savebin H:/STM32_LERN/19_OLED/OBJ/rb_r.bin 0x08000000 0x8000
-exit
