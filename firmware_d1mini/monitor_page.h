@@ -139,7 +139,7 @@ footer span{font-variant-numeric:tabular-nums}
 <footer>
   <div><span>数据年龄</span><span><span id="age">--</span> s</span></div>
   <div><span>有效帧 / 异常帧</span><span><span id="frames">0</span> / <span id="rejected">0</span></span></div>
-  <div id="ver"><span id="version">d1-telemetry-2.0.0</span></div>
+  <div id="ver"><span id="version">d1-telemetry-2.1.11</span></div>
 </footer>
 </main><script>
 'use strict';
@@ -149,7 +149,7 @@ var LINK={waiting:'等待数据',live:'通信正常',stale:'通信中断'};
 /* 判定主卡的三段文字：[大标题, 副标题] */
 var STATE={
   ok:['正常','AI 在线监测，未发现异常'],
-  learn:['学习中','正在建立基准，保持正常运转约 3 秒'],
+  learn:['学习中','正在建立基准，保持正常运转约 37 秒'],
   alarm:['异常','检测到状态异常，请检查电机负载'],
   idle:['待机','等待电机启动'],
   off:['AI 未启用','固件未加载异常检测模型'],
@@ -198,8 +198,14 @@ function show(d){
   el('rpm').textContent=(rpm===null?'--':(rpm/10).toFixed(1));
   el('current').textContent=(d.current_mA===null?'--':(d.current_mA/1000).toFixed(3));
   el('bus').textContent=(mv===null?'--':(mv/1000).toFixed(2));
-  /* 特征比值 R = 转速 / 母线电压，与板上 AI 的输入完全一致；停转时不显示 0，避免误读 */
-  el('ratio').textContent=((rpm>0&&mv>0)?(rpm*100/mv).toFixed(2):'--');
+  /* 特征比值 R：与板上 OLED 完全同一口径。
+   * 第一步算原始的 rpm/V；第二步按膝点归一化到 58% 基准档，即乘 (58-50)/(duty-50)。
+   * 归一化的意义：空载转速对占空比是「过膝点的直线」，R = 17.5 x (duty-50)，
+   * 所以除以 (duty-50) 之后不同档位的 R 才可比。
+   * duty<=50 落在起动死区里，这个式子没有物理意义，一律显示 --。 */
+  var ratioText='--';
+  if(rpm>0&&mv>0&&d.duty>50){ratioText=((rpm*100/mv)*(8/(d.duty-50))).toFixed(2);}
+  el('ratio').textContent=ratioText;
   el('level').textContent='L'+d.level;
   el('duty').textContent=d.duty;
 

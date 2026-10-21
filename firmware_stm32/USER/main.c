@@ -111,9 +111,102 @@
 
 /* ---- 电机测试档位：占空比百分数 ----
  * TIM9 的 ARR = 100-1 = 99，所以 TIM_SetCompare 的值正好就是百分数。
- * 2026-10-14：只保留 0 档（停）与 1 档（58%），自动扫描已删除。 */
-static const uint8_t DUTY_LEVEL[2] = { 0U, 58U };   /* 0 档 = 停转，1 档 = 58%（板端 AI 训练/检测档） */
-#define LEVEL_MAX       1U          /* 档位上限：只有 0 与 1 */
+ *
+ * 【历史】
+ * 2026-10-14：只保留 0 档（停）与 1 档（58%），自动扫描已删除。
+ * 2026-10-20：试过 63% + 66% 双档，当时判断 58% 处在起动临界区
+ *             （58% 只读到 142 rpm，63% 却有 237 rpm），故回退成单档。
+ * 2026-10-21：改回双档。重新梳理实测数据后，上一版的判断依据不成立：
+ *             1) 142 rpm 那次是在电池亏电状态下测的。同一 58% 在满电时
+ *                读到过 450~520 rpm，说明 142 rpm 不是「档位特性」，
+ *                而是母线带载塌压，属于供电问题而不是 PWM 问题；
+ *             2) 所以原先「两档不在同一线性段」的结论必须重测；
+ *             3) 老师要求两档差 20 个点。实测 46% 起不来（按档即报 WARN，
+ *                说明 46 仍在起动死区里），故低档提到 52%；等确认 52 能稳定转，
+ *                再决定是否往下试 48，或把高档提到 68 凑满 20 个点。
+ *                66 是此前实测还能稳定转的上界（66% 约 350 rpm）。
+ *                实测还能稳定转的上界（66% 约 350 rpm）。
+ *
+ * 【怎么改成 68】只改 DUTY_L2 这一行。但先看清代价：
+ *             68 x 12.6 V = 8.57 V，比 MG310 额定 7.4 V 高约 15%，
+ *             只有在满电、且保护板不拉闸的前提下才成立。
+ *
+ * 【可用区间】（历史实测，需在满电条件下复测）
+ *             低于 40% 转不动（电枢电流断续 + 减速箱静摩擦，起动死区）；
+ *             高于 74% 电流冲高，会被 3S 电池保护板拉闸（转几秒即停）。 */
+/* 2026-10-21 18:05：档位保持 58/64（实测 140 / 245 rpm），并按导师思路加入
+ * 「跳变幅度」判据。
+ * 导师指出：正常 R 稳定在 13 点几、异常稳定在 10 点几，绝对差本来就不大，
+ * 换个档位 R 整体平移之后就更分不开。所以要换思路：不比你稳在哪个水平，
+ * 而比你在一个窗口里摆动了多少 —— 捏一下停一下，让它有跳变。
+ * 绝对 R 随档位变，跳变幅度不随档位变，所以这个判据跨档位通用。
+ * 选点理由见下面 DUTY_L1/DUTY_L2 的注释；真正保命的仍是 GUARD 参数
+ * 与主循环里的三层过流保护。 */
+#define DUTY_L1         58U         /* 工作档 1：58%，实测 140 rpm */
+#define DUTY_L2         64U         /* 工作档 2：64%，实测 245 rpm */
+
+/* 关于导师说的「差 20 个占空比点」：
+ * 这台硬件的有效区间只有 50~70（50 以下是死区，74 以上被 3S 保护板拉闸），
+ * 总共只有 20 点宽，真取 48 会掉进死区起不来。而「差多少个点」本身不是目的，
+ * 目的是让检测能力不依赖档位 —— 这一条已经由下面的跳变幅度判据解决：
+ * 绝对 R 随档位平移、跳变幅度不随档位平移。所以 58/64 这组（实测 140 与
+ * 245 rpm，差 75%）已足够验证跨档位通用性，且两端都没踩到边界。 */
+
+/* 编译期硬上限：74% 以上会被 3S 保护板拉闸，禁止编进档位表 */
+#if (DUTY_L1 > 70U) || (DUTY_L2 > 70U)
+#error "duty above 70 percent is forbidden"
+#endif
+
+
+static const uint8_t DUTY_LEVEL[3] = { 0U, DUTY_L1, DUTY_L2 };  /* 0 停转 / 1 低档 / 2 高档 */
+#define LEVEL_MAX       2U          /* 档位上限 0..2 */
+
+
+/* ---------- D153C(TB6612) 软件过流保护参数 ----------
+ * 2026-10-21 已烧两块 D153C，根因不是接线而是电流：
+ *   TB6612 连续 1.2 A、峰值 3.2 A、过流保护(ISD)阈值约 3.5 A；
+ *   MG310 堵转电流 = 占空比 x 母线 / 电枢电阻(约 2.5 ohm)，可达 2.2~3.1 A，
+ *   正好落在「保护打不到、连续额定超 2.6 倍」的窗口里，几秒热击穿。
+ * 换档时端电压立刻变而反电动势跟不上(机械时间常数 100~300 ms)，
+ * 所以每一次升档都是一次电阻性电流冲击，烧板就发生在这个时刻。
+ * 对策：不按电流估值判，按时间判 —— 该转却没转满 0.5 s 就立刻清零占空比，
+ * 芯片永远拿不到持续的堵转电流。板子退化后电压与转速的关系已不可信，
+ * 只有时间判据在这种不确定条件下仍然成立。 */
+#define GUARD_STALL_RPM       20.0f  /* 判定没转的转速门限，与 AI 的 20 rpm 一致 */
+#define GUARD_STALL_TICKS     50U    /* 连续停转上限：50 x 10 ms = 0.5 s 即断电 */
+#define GUARD_RISE_GRACE      30U    /* 升档起动宽限：30 x 10 ms = 0.3 s 内不判堵转 */
+#define GUARD_I2T_START_A     1.8f   /* 电流超过此值才开始累积热预算(A) */
+#define GUARD_I2T_BUDGET      40.0f  /* 热预算(A^2 x s)：3.1 A 约可撑 4.2 s */
+#define GUARD_I2T_COOL        2.0f   /* 电流正常时每 10 ms 回退的热预算 */
+
+/* ---------- 2026-10-21 新增：跳变幅度判据（按导师思路） ----------
+ * 老师指出：正常 R 稳定在 13 点几、异常稳定在 10 点几，两者绝对差不大，
+ * 换个档位 R 整体平移后就更分不开。所以换思路：不去比绝对水平，
+ * 而是比「窗口内 R 摆动了多少」—— 捏一下停一下会制造大幅跳变。
+ * 绝对 R 值随档位变，跳变幅度不随档位变，这才是能跨档位通用的判据。 */
+#define RIPPLE_ALARM_PCT      8.0f   /* 跳变幅度门限(%)，正常 2~4%，捏放 15~25% */
+#define RIPPLE_ALARM_WINDOWS  2U     /* 连续多少个满窗超限才报警，防单次误报 */
+
+/* 绝对峰峰值门限，单位 rpm/V。
+ * 实测：稳定运行 0.3~0.6；捏一下停一下 2.11（64% 档）~2.53（58% 档）。
+ * 取 1.0 落在两者中间，两侧都有 1.7 倍以上余量。
+ * 不用百分比做判决的原因见 feature_r.c：恒定捏力下转速降是绝对量，
+ * 百分比会随档位差一倍（21% 与 10%），根本不能跨档位用。 */
+#define RIPPLE_ABS_ALARM      1.0f   /* rpm/V，稳定 0.3~0.6、捏放 2.1~2.5 */
+
+
+
+static uint16_t g_guardStall = 0U;    /* 停转累计计数，单位 10 ms */
+static uint16_t g_guardGrace = 0U;    /* 升档起动宽限剩余，单位 10 ms */
+static float    g_guardI2t   = 0.0f;  /* 累积热预算，单位 A^2 x s */
+static uint8_t  g_guardTrip  = 0U;    /* 保护动作锁存：1 = 已断电，按键清除 */
+
+float   g_ripplePct  = 0.0f;   /* 最近一窗跳变幅度(%)，非 static 供 J-Link 按符号名读 */
+float   g_rippleAbs  = 0.0f;   /* 最近一窗 rpm/V 绝对峰峰值，Keil Watch 可直接看 */
+
+static uint8_t  g_rippleRun   = 0U;    /* 连续超限窗计数 */
+static uint8_t  g_rippleAlarm = 0U;    /* 1 = 跳变判据已判定异常 */
+
 
 /* 2026-10-14：最近一帧 20 kHz 采样统计。刻意不加 static，
  * 供 J-Link 按符号名读，确认 fastcap 前端在上电后真的在推进。 */
@@ -208,6 +301,28 @@ int main(void)
      * 并且每攒进一个新点就触发一次 ai_monitor_tick()。 */
     ai_monitor_init();               /* 初始化板上 AI，成功后直接进入学习阶段 */
 
+    /* ---- 第 7 步：独立看门狗 IWDG ----
+     * 2026-10-21 新增。起因：板上出现过 MCU 卡死（OLED 停止刷新、电机停转，
+     * 但电源仍在），当时只能手动按白色复位键恢复，演示时一卡就当场翻车。
+     * 配置：LSI 约 32 kHz，PR = 4（64 分频）得 500 Hz，每计数 2 ms；
+     *       RLR = 999 即 1000 个计数 -> 超时 2.0 s。
+     * 取 2 s 的理由：主循环最慢一轮含 OLED 分片刷屏与 500 ms 电压读取，
+     * 单轮实测远小于 100 ms，2 s 留了约二十倍余量；卡死后又能很快自恢复。
+     * 【为什么直接写寄存器】FWLIB 没有把 stm32f4xx_iwdg.c 编进工程，
+     * 为了不改 uvprojx，这里按 RM0090 第 22 章写四个键值即可。
+     * 【注意 1】喂狗只能放在主循环里，绝不能放进中断 ——
+     *          否则主循环卡死时中断照样喂狗，看门狗形同虚设。
+     * 【注意 2】IWDG 一旦启动无法关闭，只有复位能停。 */
+    IWDG->KR  = 0x5555U;  /* 写 0x5555 解锁 PR/RLR 写保护 */
+    IWDG->PR  = 0x04U;    /* PR[2:0] = 100 -> 64 分频，LSI/64 = 500 Hz */
+    IWDG->RLR = 999U;     /* 1000 个计数 x 2 ms = 2.0 s 超时 */
+    IWDG->KR  = 0xAAAAU;  /* 先喂一次，避免使能瞬间就溢出 */
+    IWDG->KR  = 0xCCCCU;  /* 启动 IWDG */
+
+    /* 调试友好：CPU 被 J-Link halt 时让 IWDG 暂停计数。
+     * 少了这一句，halt 超过 2 s 就会被看门狗复位，读内存与单步全部失效。 */
+    DBGMCU->APB1FZ |= DBGMCU_APB1_FZ_DBG_IWDG_STOP;
+
     {   /* 开一层局部作用域：下面三个「上次时刻」只在主循环内可见 */
         uint32_t lastSensorMs = Encoder_GetMs();       /* 上次 10 ms 传感器采样的时刻 */
         uint32_t lastVbatMs = lastSensorMs - VBAT_UPDATE_MS; /* 减去一个周期，保证首轮立刻读一次电压 */
@@ -215,6 +330,8 @@ int main(void)
 
     while (1)                                 /* 主循环：永不退出 */
     {
+        IWDG->KR = 0xAAAAU;  /* 喂狗：主循环每轮喂一次，卡死超过 2 s 自动复位 */
+
         /* ============ 按键切档 ============
          * KEY0(PE4) = 立即停转（急停，出任何状况先按它）
          * KEY1(PE3) = 档位 +1
@@ -229,6 +346,12 @@ int main(void)
          * PA0 完全不参与，主循环只取事件，没有锁可以卡。 */
         {                                 /* 按键区：独立作用域，key 用完即弃 */
             KeyEvent key = Key_Scan();                                     /* 取一次按键事件（无事件返回 NONE） */
+            if (key != KEY_EVENT_NONE)                        /* 任何按键都清保护锁存 */
+            {
+                g_guardTrip  = 0U;                            /* 解锁，允许重新给占空比 */
+                g_guardStall = 0U;                            /* 停转计数清零 */
+                g_guardI2t   = 0.0f;                          /* 热预算清零 */
+            }
 
             if (key == KEY_EVENT_0)                        /* KEY0：急停 */
             {
@@ -240,23 +363,30 @@ int main(void)
                 if (level < LEVEL_MAX)                                       /* 未到上限才允许加 */
                 {
                     level++;                                    /* 档位加一 */
+                    g_guardGrace = GUARD_RISE_GRACE;  /* 升档给 0.3 s 起动宽限，避免起动瞬间误判 */
                 }
                 Motor_Config(DUTY_LEVEL[level], 1U);                                    /* 按新档位重设 PWM */
-                if (level == 1U)                                       /* 恰好进到 58% 档 */
+                /* 2026-10-21：切档等于换工况。上一档攒的 32 点窗、学到的
+                 * 64 窗基线全部作废，否则 AI 会拿上一档的 R 当本档的正常值，
+                 * 切档瞬间必然误报。清窗 + 重学后约 10 s 恢复检测
+                 * （3.2 s 攒满窗 + 6.4 s 学 64 窗）。 */
+                ai_monitor_switch_level(DUTY_LEVEL[level]);  /* 清窗并重学本档基线 */
+                if (level != 0U)                                       /* 任意工作档都抓一次原始块 */
                 {
-                    /* 进入 58% 档时抓一次 100ms@20kHz 原始块（2000 点），
-                     * 供 J-Link 读 g_fastcap_raw 后做 FFT；期间若有整帧丢失则作废。 */
+                    /* 抓 100 ms@20kHz 原始块（2000 点），供 J-Link 读
+                     * g_fastcap_raw 后做 FFT；期间若有整帧丢失则作废。 */
                     fastcap_arm_raw();
                 }
             }
             else if (key == KEY_EVENT_2)                        /* KEY2：档位 -1 */
             {
-                /* level 只会从 1~2 往下落到 0，所以这里索引永远 <= 1，安全 */
+                /* level 取值 0..LEVEL_MAX，DUTY_LEVEL 有 LEVEL_MAX+1 个元素，索引安全 */
                 if (level > 0U)                                       /* 未到下限才允许减 */
                 {
                     level--;                                    /* 档位减一（下限 0） */
                 }
                 Motor_Config(DUTY_LEVEL[level], 1U);                                    /* 按新档位重设 PWM */
+                ai_monitor_switch_level(DUTY_LEVEL[level]);  /* 切档即换工况：清窗 + 重学本档基线 */
             }
         }                                 /* 按键处理结束 */
 
@@ -292,6 +422,47 @@ int main(void)
                 /* AI 的唯一输入是 feature_r 产出的 R = 转速 / 母线电压。 */
                 d.current_a = Current_GetAmp();                        /* 电流（A） */
                 d.current_valid = Current_IsValid();                        /* 电流有效性 */
+                /* ---- 2026-10-21 D153C 过流保护（两层，原理见文件头的 GUARD 参数注释） ----
+                 * 第 1 层 堵转断电：给了占空比却不转满 0.5 s -> 立刻清零并锁存
+                 * 第 2 层 电流积分：编码器失效时第 1 层会失灵，用电流热预算兜底 */
+                if (g_guardGrace > 0U)                  /* 升档起动宽限期内不判堵转 */
+                {
+                    g_guardGrace--;                     /* 宽限倒计时 */
+                    g_guardStall = 0U;                  /* 宽限期内不累计停转 */
+                }
+                else if ((d.duty != 0U) && (d.speed_rpm < GUARD_STALL_RPM))  /* 给了占空比却不转 */
+                {
+                    g_guardStall++;                     /* 停转累计一个 10 ms */
+                }
+                else
+                {
+                    g_guardStall = 0U;                  /* 一转起来就清零，不跨次数累积 */
+                }
+
+                if ((d.current_valid != 0U) && (d.current_a > GUARD_I2T_START_A))  /* 电流超门限 */
+                {
+                    g_guardI2t += d.current_a * d.current_a * 0.01f;  /* 累积 I^2 x t */
+                }
+                else if (g_guardI2t > GUARD_I2T_COOL)   /* 电流正常，热预算缓慢回退 */
+                {
+                    g_guardI2t -= GUARD_I2T_COOL;       /* 回退一个 10 ms 份额 */
+                }
+                else
+                {
+                    g_guardI2t = 0.0f;                  /* 已经凉透，清零防负数 */
+                }
+
+                if ((g_guardTrip == 0U) &&              /* 未锁存时才判 */
+                    ((g_guardStall >= GUARD_STALL_TICKS) || (g_guardI2t > GUARD_I2T_BUDGET)))  /* 堵转超时或热预算耗尽 */
+                {
+                    g_guardTrip  = 1U;                  /* 锁存：松手也不会立刻重犯 */
+                    g_guardStall = 0U;                  /* 清停转计数 */
+                    g_guardI2t   = 0.0f;                /* 清热预算 */
+                    level        = 0U;                  /* 强制回停转档 */
+                    d.duty       = 0U;                  /* 屏显与遥测立刻反映断电 */
+                    Motor_Config(DUTY_LEVEL[0], 1U);    /* 占空比清零 = 电机断电 */
+                    ai_monitor_switch_level(0U);        /* 清 AI 窗口，别把异常数据当基线 */
+                }
                 /* 2026-10-19：停机通知。转速低于 20 rpm 时每 10 ms 报一次，
                  * 连续 0.5 s 停机就重学基线 —— 换负载/换工况后不用断电就能重新对齐。
                  * 注意不能放在 feature_r_tick() 里面判断：停机时它直接返回 0，
@@ -304,9 +475,32 @@ int main(void)
                  * R = 转速 / 母线电压 攒进 32 点窗口（窗长 3.2 s）。
                  * 停转或电压通路失效时模块内部会自己丢窗，
                  * 不会把停机期间的数据混进正在检测的窗口里。 */
-                if (feature_r_tick(d.speed_rpm, d.vbat_v, d.vbat_valid, nowMs) != 0U)
+                if (feature_r_tick(d.speed_rpm, d.vbat_v, d.vbat_valid, (float)d.duty, nowMs) != 0U)
                 {   /* 这一拍真的攒进了一个新点（大约每 100 ms 一次） */
                     ai_monitor_tick();   /* 窗满 32 点就喂一次模型，窗不满直接返回 */
+                    /* 2026-10-21：跳变幅度判据。窗口每推进一个点算一次，
+                     * 连续 RIPPLE_ALARM_WINDOWS 个满窗超限才置报警，
+                     * 这样一次磕碰不会误报，而持续的捏放会立刻报出来。 */
+                    g_ripplePct = feature_r_ripple();          /* 本窗跳变幅度(%) */
+                    g_rippleAbs = feature_r_ripple_abs();      /* 绝对峰峰值(rpm/V)，判决用这个 */
+                    d.ripple_abs   = g_rippleAbs;              /* 送屏显：与 R 轮显 */
+                    d.ripple_valid = feature_r_ripple_valid(); /* 窗没满时屏上显示 --.-- */
+
+
+                    if ((feature_r_ripple_valid() != 0U) &&    /* 窗口已满才算数 */
+                        (g_rippleAbs >= RIPPLE_ABS_ALARM))    /* 绝对幅度超门限 */
+                    {
+                        if (g_rippleRun < 200U)                /* 防溢出 */
+                        {
+                            g_rippleRun++;                     /* 超限窗计数 +1 */
+                        }
+                    }
+                    else                       /* 幅度正常或窗口未满 */
+                    {
+                        g_rippleRun = 0U;      /* 连击中断，重新计数 */
+                    }
+                    g_rippleAlarm = (g_rippleRun >= RIPPLE_ALARM_WINDOWS) ? 1U : 0U;
+
                 }
                 d.r_ratio = feature_r_current();                        /* 当前 R（rpm/V），供屏显 */
                 d.r_valid = feature_r_current_valid();                  /* R 是否处于有效运行区间 */
@@ -340,7 +534,8 @@ int main(void)
                            (float)ai_monitor_get_similarity() : 0.0f;                           /* 否则填 0 */
             d.ai_valid = ai_monitor_has_result();                                /* 屏上据此决定显示数值还是 --- */
 
-            if ((d.speed_valid == 0U) || (d.vbat_valid == 0U) ||                /* 任一物理量无效 -> WARN 优先 */
+            if ((g_guardTrip != 0U) ||                                          /* 过流保护已动作 -> WARN */
+                (d.speed_valid == 0U) || (d.vbat_valid == 0U) ||                /* 任一数据无效 -> WARN 报警 */
                 (d.current_valid == 0U))                                       /* 与上一行的条件互为或关系 */
             {
                 d.state = UI_ST_WARN;                            /* 告警态：数据不可信 */
@@ -355,8 +550,10 @@ int main(void)
                 /* 2026-10-14：ALARM 改由 ai_monitor 内部的事件级规则产生
                  * （连续多个窗口相似度偏低），不再看单个采样点低于阈值。
                  * 原因：正常运行时相似度本身就会下探，固定阈值会误报。 */
-                if ((aiPhase == AI_MONITOR_DETECTING) &&                /* 检测阶段且 AI 报了事件级报警 */
-                    (ai_monitor_is_alarm() != 0U))                /* 与上一行的条件互为与关系 */
+                if (((aiPhase == AI_MONITOR_DETECTING) &&                /* 检测阶段且 AI 报了事件级报警 */
+                     (ai_monitor_is_alarm() != 0U)) ||                   /* 与上一行的条件互为与关系 */
+                    (g_rippleAlarm != 0U))                               /* 或者跳变幅度判据触发 */
+
                 {
                     d.state = UI_ST_ALARM;                            /* 升级为报警态 */
                 }

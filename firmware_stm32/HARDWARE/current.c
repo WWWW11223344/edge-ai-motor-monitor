@@ -58,6 +58,26 @@
  * ·ñÔò»á°Ñ¡¸ÕæÊµµçÁ÷¡¹µ±³ÉÁãµãÆ¯ÒÆÄ¨µô£¬ÄÇ¾Í²â²»³ö¶«Î÷ÁË¡£ */
 #define CURRENT_ZERO_TRACK_ALPHA  0.02f
 
+/* ¡¾²ÉÑùÏàÎ»¶¶¶¯£ºPWM ÎÆ²¨ÎªÊ²Ã´±ØĞëÕâÑù´¦Àí¡¿
+ * 2026-10-21 ¶¨Î»µ½µÄÕæÎÊÌâ£ºÖ÷Ñ­»·µÄ´«¸ĞÆ÷½ÚÅÄÊÇ 10 ms£¬TIM9 µÄ PWM
+ * ÖÜÆÚÊÇ 50 us£¨2 MHz / 100£©£¬10 ms ÕıºÃÊÇ 200 ¸ö PWM ÖÜÆÚ£»¶øÊ±»ù
+ * nowMs µÄ¿Ì¶ÈÊÇ 1 ms£¬Ò²ÊÇ 20 ¸ö PWM ÖÜÆÚ¡£Á½±ßµÄ±ÈÖµÓÀÔ¶ÊÇÕûÊı£¬
+ * ÓÚÊÇÃ¿Ò»´ÎµçÁ÷²ÉÑù¶¼ÂäÔÚÎÆ²¨µÄÍ¬Ò»¸öÏàÎ»ÉÏ ¡ª¡ª
+ * 8 µã»¬¶¯Æ½¾ùÆ½¾ùµÄÊÇÍ¬Ò»¸öË²Ê±Öµ£¬ÎÆ²¨Ò»µã¶¼Ã»±»µÖÏû¡£
+ * ÏÖ³¡Ö¤¾İ£ºÍ£»úÁãµã 2.59 V¡¢´øÔØ¶ÁÊı 2.52 V£¬Ëã³öÀ´ÊÇ -0.37 A£»
+ * ¶øµ±ÌìÔçĞ©Ê±ºòÍ¬Ò»¹¤¿ö£¨58%¡¢140 rpm£©ÊÇ +0.10 A¡£
+ * ÒòÎªÍ£»úÊ±Ã»ÓĞ PWM¡¢Ã»ÓĞÎÆ²¨£¬ÁãµãÒ»Ö±ÊÇ×¼µÄ£¬ËùÒÔÎÊÌâÖ»ÔÚ´øÔØÊ±³öÏÖ£»
+ * ÓÖÒòÎª»»ÓÃ¸üÖØµÄ ICM ÍÆÀí¸Ä±äÁËÖ÷Ñ­»·ºÄÊ±£¬²ÉÑùÏàÎ»¸ú×Å±ä£¬
+ * ¶ÁÊı²Å»áÔÚÕâÒ»´Î¹Ì¼şÉı¼¶ºóÆ¾¿ÕÌøÁË 68 mV¡£
+ * ½â·¨£ºÈÃ²ÉÑùÏàÎ»ÔÚ 0..7 Ö®¼äÂÖ×ª£¬Ã¿µµÏà²î 1050 ¸öÄÚºËÖÜÆÚ
+ * £¨168 MHz ÏÂ = 6.25 us£©£¬8 ¸öÑù±¾ÕıºÃÆÌÂúÒ»¸ö 50 us µÄ PWM ÖÜÆÚ£¬
+ * 8 µã»¬¶¯Æ½¾ù¾Í±ä³ÉÕûÖÜÆÚÆ½¾ù£¬ÎÆ²¨±»ÕæÕıÏûµô¡£
+ * ÓÃ DWT ÖÜÆÚ¼ÆÊıÆ÷¼ÆÊ±£¬²»Õ¼ÓÃ¶¨Ê±Æ÷£¬Ò²²»ĞèÒª¸Ä ADC ÅäÖÃ¡£
+ * ×¢Òâ£ºÁãµãĞ£×¼ÊÇÔÚÍ£×ª×´Ì¬ÏÂ×öµÄ£¬Ã»ÓĞÎÆ²¨£¬ËùÒÔ Current_Calibrate()
+ * Àï²»¼Ó¶¶¶¯£¬±ÜÃâÎŞÎ½µØÀ­³¤ÉÏµçĞ£×¼Ê±¼ä¡£ */
+#define CURRENT_DITHER_PHASES       8U
+#define CURRENT_DITHER_STEP_CYCLES  1050U
+
 /* ==========================================================================
  * ACS712 µçÁ÷¼ì²â£¨PA5 / ADC1_IN5£©
  * --------------------------------------------------------------------------
@@ -94,6 +114,7 @@ static uint16_t g_i_raw_history[CURRENT_FILTER_WINDOW] = {0U};  /* »¬¶¯Æ½¾ùÓÃµÄ»
 static uint8_t g_i_raw_count = 0U;  /* ÒÑÊÕ¼¯µÄÑù±¾Êı£¨ÉÏµç³õÆÚ²»×ã 8£© */
 static uint8_t g_i_raw_index = 0U;  /* ÏÂÒ»¸öĞ´ÈëÎ»ÖÃ */
 static uint16_t g_i_raw_avg = 0U;  /* Æ½¾ùºóµÄÔ­Ê¼ ADC Âë */
+static uint8_t  g_i_dither = 0U;  /* ²ÉÑùÏàÎ»µµÎ» 0..7£¬ÂÖ×ªÆÌÂúÒ»¸ö PWM ÖÜÆÚ */
 
 /*-----------------------------------------------------------
   Function:      Current_ConfigPin
@@ -119,6 +140,44 @@ static void Current_ConfigPin(uint32_t mode, uint32_t pupd)
 }
 
 /*-----------------------------------------------------------
+  Function:      Current_EnableCycleCounter
+  Description:   ´ò¿ª Cortex-M4 µÄ DWT ÖÜÆÚ¼ÆÊıÆ÷£¬¹©²ÉÑùÏàÎ»¶¶¶¯¼ÆÊ±¡£
+  Calls:         ÎŞ
+  Called By:     Current_Init()
+  Input:         ÎŞ
+  Output:        ÎŞ
+  Return:        ÎŞ
+  Others:        DWT ÊÇÄÚºË×Ô´øµÄµ÷ÊÔµ¥Ôª£¬ÆôÓÃºó CYCCNT °´ÄÚºËÊ±ÖÓ 168 MHz
+                 ×ÔÔö£»ÕâÀïÖ»ÄÃËü×ö¼¸Ê®Î¢Ãë¼¶µÄ¶ÌÑÓÊ±£¬²»¶¯ÈÎºÎÍâÉè¡£
+-----------------------------------------------------------*/
+static void Current_EnableCycleCounter(void)
+{
+    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;  /* ´ò¿ª¸ú×Ùµ¥ÔªµçÔ´ */
+    DWT->CYCCNT = 0U;  /* ¼ÆÊıÆ÷ÇåÁã */
+    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;  /* Æô¶¯ÖÜÆÚ¼ÆÊıÆ÷ */
+}
+
+/*-----------------------------------------------------------
+  Function:      Current_WaitCycles
+  Description:   Ã¦µÈÖ¸¶¨µÄÄÚºËÖÜÆÚÊı£¨168 MHz ÏÂ 168 ¸öÖÜÆÚÔ¼ 1 us£©¡£
+  Calls:         ÎŞ
+  Called By:     Current_UpdateFiltered()
+  Input:         cycles  ĞèÒªµÈ´ıµÄÖÜÆÚÊı
+  Output:        ÎŞ
+  Return:        ÎŞ
+  Others:        ÓÃÎŞ·ûºÅ¼õ·¨±È½Ï£¬¼ÆÊıÆ÷»ØÈÆÊ±Ò²²»»áËÀµÈ¡£
+-----------------------------------------------------------*/
+static void Current_WaitCycles(uint32_t cycles)
+{
+    uint32_t start = DWT->CYCCNT;  /* ¼ÇÏÂÆğÊ¼¼ÆÊı */
+
+    while ((uint32_t)(DWT->CYCCNT - start) < cycles)  /* µÈµ½¹»ÖÜÆÚÊıÎªÖ¹ */
+    {
+        /* ¿ÕÑ­»·£¬¿¿ DWT ÖÜÆÚ¼ÆÊıÆ÷¼ÆÊ± */
+    }
+}
+
+/*-----------------------------------------------------------
   Function:      Current_Init
   Description:   ³õÊ¼»¯µçÁ÷¼ì²âÒı½Å£º´ò¿ª GPIOA Ê±ÖÓ£¬½« PA5 ÅäÖÃÎªÄ£ÄâÊäÈë£¬
                  ²¢Çå¿ÕÓĞĞ§±êÖ¾ÓëÊ§°ÜÔ­Òò¡£
@@ -133,6 +192,7 @@ void Current_Init(void)
 {
     RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);  /* ¿ª GPIOA Ê±ÖÓ */
     Current_ConfigPin(GPIO_Mode_AN, GPIO_PuPd_NOPULL);  /* PA5 Åä³ÉÄ£ÄâÊäÈë£¬²¢¹ØµôÄÚ²¿ÉÏÏÂÀ­ */
+    Current_EnableCycleCounter();  /* Æô¶¯ DWT ÖÜÆÚ¼ÆÊıÆ÷£¬¹©²ÉÑùÏàÎ»¶¶¶¯¼ÆÊ± */
     g_i_valid = 0U;  /* Î´Ğ£×¼Ç°Êı¾İ²»¿ÉĞÅ */
     g_i_fail_reason = 0U;  /* Çå¿ÕÊ§°ÜÔ­Òò */
 }
@@ -252,6 +312,14 @@ static uint8_t Current_UpdateFiltered(void)
     uint32_t sum = 0U;  /* »º³åÄÚÑù±¾ÇóºÍ */
     uint8_t count;  /* ±¾´Î²ÎÓëÆ½¾ùµÄÑù±¾Êı */
     uint8_t i;  /* Ñ­»·ÏÂ±ê */
+
+    /* ²ÉÑùÇ°°´ÏàÎ»¶¶¶¯µÈÒ»Ğ¡¶Î£ºÈÃÏàÁÚÑù±¾ÂäÔÚ PWM ÖÜÆÚµÄ²»Í¬Î»ÖÃ£¨¼ûÎÄ¼şÍ·×¢ÊÍ£© */
+    Current_WaitCycles((uint32_t)g_i_dither * CURRENT_DITHER_STEP_CYCLES);
+    g_i_dither++;  /* ÏàÎ»Ç°½øÒ»µµ */
+    if (g_i_dither >= CURRENT_DITHER_PHASES)  /* ×ßÍêÒ»¸öÍêÕû PWM ÖÜÆÚ */
+    {
+        g_i_dither = 0U;  /* »Øµ½Æğµã£¬¿ªÊ¼ÏÂÒ»ÂÖ */
+    }
 
     raw = Current_ReadRaw();  /* ¶ÁÒ»´Î PA5 */
     if (ADC1_LastReadOk() == 0U)  /* ×ª»»Ê§°Ü */

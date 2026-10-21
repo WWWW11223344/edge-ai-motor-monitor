@@ -61,7 +61,8 @@
 
 /* 电机档位号：0~1 是固定占空比，2 是"自动扫描启动临界点"。
  * ui.c 靠这个值决定底条那一格画什么，所以必须和 main.c 的 LEVEL_SCAN 一致。 */
-#define UI_LEVEL_SCAN   2U
+#define UI_LEVEL_SCAN   0xFEU   /* 2026-10-21：原值 2 与新增的 2 档（66%）撞号，改成一个不会出现的哨兵值；
+                                 * 自动扫描功能已删除，这里只为兼容底条显示分支的旧代码 */
 
 /* 屏幕要显示的全部数据。
  * 后面每接一路传感器，就往这里多填一个字段。 */
@@ -76,6 +77,9 @@ typedef struct
     float    r_ratio;       /* 归一化转速 R = 转速 / 母线电压，单位 rpm/V */
     uint8_t  r_valid;       /* 1 = R 可信（电机在转且电压通路正常） */
     uint8_t  r_fill;        /* R 窗口已攒点数 0 ~ 32，满 32 才能送 AI */
+    float    ripple_abs;    /* 窗内 rpm/V 绝对峰峰值（跳变幅度 dR），判决用 */
+    uint8_t  ripple_valid;  /* 1 = 窗口已满，dR 有效可显示 */
+
     float    similarity;    /* 模型结果预留，未接入模型时为 0，不作为状态判据 */
     uint8_t  state;         /* 状态码，取 UI_ST_xxx */
     uint8_t  demo;          /* 1 = 含 SIM 标记；传感器有效性另由各 valid 位标 */

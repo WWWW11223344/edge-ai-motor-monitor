@@ -23,14 +23,16 @@
                                                 去掉 64 帧窗口、19 维特征、四组拼接的旧流程，
                                                 ai_monitor_feed_frame() 改为 ai_monitor_tick()
 ***********************************************************/
-/* 【新旧模型的区别】
- * 旧库：输入 4 个样本 x 19 轴 = 76 个 float，需要自己攒 64 帧算 19 维特征；
- * 新库：输入 1 个样本 x 32 点 = 32 个 float，特征提取已经做进模型里了。
- * 具体地说，模型包 artifacts/zsm_preprocessing_config.json 里写的是
- * 「均值池化，保留 5%」，即把 32 点压成 1 个均值，
- * 再对这个均值做 Z-score 判异常。
- * 所以本文件不再需要做任何特征计算，只负责「取窗 + 喂模型 + 判报警」。
- * 这也是为什么 ai_monitor.c 从 385 行变到不到 300 行：少了一整层特征。 */
+/* 【模型与输入】
+ * 输入 1 个样本 x 32 点 = 32 个 float，这 32 点是 feature_r 算出来的
+ * 「q = 转速 / 母线电压」的 8 点滚动峰峰值（跨度 0.8 s，见 feature_r.h）。
+ * 模型族是 ICM（增量聚类），artifacts/icm_preprocessing_config.json 里写的是
+ * absolute -> extract_features(95 分位 / 峰值 / 25 分位) -> interleaved，
+ * 即先从 32 点里取三个序统计量，再做聚类距离判定。
+ * 所以本文件不参与任何特征计算，只负责「取窗 + 喂模型 + 判报警」。
+ * 【为什么换成峰峰值】上一代喂的是 R 电平本身，而电平会被库里的池化平均掉，
+ * 捏轴只占窗口一小段时几乎看不出变化（同批数据实测只检出 58.9%）；
+ * 改喂滚动峰峰值后同样数据检出 87.0%，重训后离线基准 92.0%。 */
 
 #include "ai_monitor.h"        /* 本模块接口与常量声明 */
 /* 【引用的头文件】
@@ -56,7 +58,7 @@ typedef char ai_monitor_win_len_check[  /* 编译期尺寸守卫：数组长度为 1 表示通过
 
 static float g_neai_in[AI_MONITOR_NEAI_IN_LEN];  /* 模型输入缓冲（32 个 float） */
 static uint32_t g_learned;  /* 已完成的 learn 调用次数 */
-static uint32_t g_detectCount;  /* 自上次重学以来的检测次数（仅未报警时累计） */
+static uint32_t g_detectCount;  /* 自上次重学以来的检测次数（仅相似度达标时累计） */
 static AiMonitorPhase g_phase = AI_MONITOR_OFF;  /* 当前阶段 */
 static uint8_t g_similarity;  /* 最近一次相似度（0~100） */
 static uint8_t g_result_valid;  /* 最近一次检测结果是否有效 */
@@ -66,6 +68,8 @@ static uint8_t g_lowRun;  /* 连续低于阈值的窗数 */
 static uint8_t g_highRun;  /* 连续达标的窗数 */
 static uint8_t g_enabled = 1U;  /* 1 = 启用板上 AI，0 = 只采集不跑模型 */
 static uint8_t g_winEmpty;  /* 连续拿不到满窗的节拍数（判断电机是否停过） */
+static uint8_t g_needLearn;  /* 1 = 模型库明确要求继续学，0 = 知识已够可以检测 */
+static uint16_t g_learnLeft;  /* 本轮还要学多少个窗（库要求学习时用它兜底防死循环） */
 
 /*-----------------------------------------------------------
   Function:      ai_monitor_init
@@ -75,13 +79,25 @@ static uint8_t g_winEmpty;  /* 连续拿不到满窗的节拍数（判断电机是否停过） */
   Input:         无
   Output:        无
   Return:        无（是否成功请用 ai_monitor_get_phase() 查）
-  Others:        1) 参数 false 表示「不用预训练知识，从头学」，
-                    这与编译时 use_knowledge = false 是一致的；
-                 2) 初始化成功则直接进入 LEARNING，失败则进入 ERROR。
+  Others:        1) 先按 true 初始化，直接用库自带的预训练知识，
+                    这样上电就能检测，不必先现场学 368 个窗；
+                  2) 万一库里没有预训练知识，init(true) 会失败，
+                    这时退回 init(false) 从零学，并置 g_needLearn；
+                  3) 成功且不需要学则直接进入 DETECTING，否则进 LEARNING。
 -----------------------------------------------------------*/
 void ai_monitor_init(void)
 {
-    enum neai_state state = neai_anomalydetection_init(false);  /* 初始化模型库（false = 从头学） */
+    enum neai_state state = neai_anomalydetection_init(true);  /* 先用库内预训练知识 */
+
+    g_needLearn = 0U;  /* 默认认为知识已够 */
+    g_learnLeft = 0U;  /* 学习配额清零 */
+
+    if (state != NEAI_OK)  /* 库里没有预训练知识，退回从零学 */
+    {
+        state = neai_anomalydetection_init(false);  /* 清空知识，从头学 */
+        g_needLearn = 1U;  /* 标记需要现场学习 */
+        g_learnLeft = (uint16_t)AI_MONITOR_LEARN_MAX;  /* 给足上限 */
+    }
 
     g_learned = 0U;  /* 学习次数归零 */
     g_detectCount = 0U;  /* 检测计数归零 */
@@ -92,7 +108,18 @@ void ai_monitor_init(void)
     g_lowRun = 0U;  /* 清低分计数 */
     g_highRun = 0U;  /* 清高分计数 */
     g_initialized = (state == NEAI_OK) ? 1U : 0U;  /* 记下初始化是否成功 */
-    g_phase = (g_initialized != 0U) ? AI_MONITOR_LEARNING : AI_MONITOR_ERROR;  /* 成功就进入学习，失败则报错 */
+    if (g_initialized == 0U)  /* 初始化失败 */
+    {
+        g_phase = AI_MONITOR_ERROR;  /* 报错阶段 */
+    }
+    else if (g_needLearn != 0U)  /* 初始化成功但要从零学 */
+    {
+        g_phase = AI_MONITOR_LEARNING;  /* 进入学习阶段 */
+    }
+    else  /* 初始化成功且已有预训练知识 */
+    {
+        g_phase = AI_MONITOR_DETECTING;  /* 直接进入检测阶段 */
+    }
 }
 
 /*-----------------------------------------------------------
@@ -163,16 +190,17 @@ uint8_t ai_monitor_has_result(void)
   Called By:     调试取用
   Input:         无
   Output:        无
-  Return:        0 ~ AI_MONITOR_LEARN_WINDOWS
-  Others:        超过上限时封顶在 AI_MONITOR_LEARN_WINDOWS，避免转回 uint8 时溢出。
+  Return:        0 ~ 255（实际学习次数可能超过 255，超出就封顶）
+  Others:        ICM 库的最少学习次数是 368，已经超过 uint8 上限，
+                  所以这里必须封顶，否则转回 uint8 会截断成错的值。
 -----------------------------------------------------------*/
 uint8_t ai_monitor_get_fill(void)
 {
-    if (g_learned >= AI_MONITOR_LEARN_WINDOWS)  /* 已学完 */
+    if (g_learned > 255U)  /* 超过 uint8 能表示的范围 */
     {
-        return (uint8_t)AI_MONITOR_LEARN_WINDOWS;  /* 封顶 */
+        return 255U;  /* 封顶 */
     }
-    return (uint8_t)g_learned;  /* 未学完时直接报进度 */
+    return (uint8_t)g_learned;  /* 未溢出时直接报进度 */
 }
 
 /*-----------------------------------------------------------
@@ -192,27 +220,23 @@ uint8_t ai_monitor_is_alarm(void)
 
 /*-----------------------------------------------------------
   Function:      ai_monitor_notify_stopped
-  Description:   主循环发现电机停转时调用，用来在停机后重学基线。
+  Description:   主循环发现电机停转时调用，用来在停机后清掉报警与计数。
   Calls:         无
   Called By:     main.c 主循环 10 ms 块（d.speed_rpm < 20 rpm 时每拍一次）
   Input:         无
-  Output:        修改 g_winEmpty、g_learned、g_phase、g_detectCount
+  Output:        修改 g_winEmpty、g_alarm、g_lowRun、g_highRun、g_phase
   Return:        无
   Others:        1) 连续 AI_MONITOR_STOP_TICKS 拍（0.5 s）停机才动手，
-                    避免转速瞬时跌破 20 rpm 就触发一次无谓的重学；
-                 2) 停机再起转等于换了工况（实测同一档位下转速会因负载
-                    在 150 与 216 rpm 之间变化），旧基线不再代表当前状态；
-                 3) 重新起转后由 ai_monitor_tick() 按新工况重学 64 个窗。
+                    避免转速瞬时跌破 20 rpm 就清一次；
+                  2) 起转后窗口由 feature_r_tick() 的闸门自己重建，
+                    这里只负责把报警和计数清干净；
+                  3) 【2026-10-21 起不再重学基线】峰峰值特征档位/工况
+                    不敏感，预训练知识可以直接沿用，停机不必丢知识。
 -----------------------------------------------------------*/
 void ai_monitor_notify_stopped(void)
 {
     if ((g_initialized == 0U) || (g_enabled == 0U))  /* 没开 AI 就不用管 */
     {
-        return;  /* 直接返回 */
-    }
-    if (g_learned == 0U)  /* 已经处于待学习状态，没什么可清的 */
-    {
-        g_winEmpty = 0U;  /* 计数归零 */
         return;  /* 直接返回 */
     }
     if (g_winEmpty < 0xFFU)  /* 防溢出 */
@@ -221,12 +245,55 @@ void ai_monitor_notify_stopped(void)
     }
     if (g_winEmpty >= AI_MONITOR_STOP_TICKS)  /* 连续 0.5 s 都停机 */
     {
-        g_learned = 0U;  /* 学习次数归零，回到学习分支 */
-        g_phase = AI_MONITOR_LEARNING;  /* 阶段回到学习 */
-        g_detectCount = 0U;  /* 重学后重新计检测次数 */
+        g_winEmpty = 0U;  /* 触发一次就归零，避免每拍重复清 */
         g_lowRun = 0U;  /* 清低分计数 */
         g_highRun = 0U;  /* 清高分计数 */
+        g_alarm = 0U;  /* 停机期间不留报警 */
+        g_detectCount = 0U;  /* 重新计检测次数 */
+        g_result_valid = 0U;  /* 结果置为无效 */
+        g_phase = AI_MONITOR_DETECTING;  /* 知识库保留，仍是检测阶段 */
     }
+}
+
+/*-----------------------------------------------------------
+  Function:      ai_monitor_switch_level
+  Description:   切换电机档位（等于换工况）时调用：清空 R 窗口，
+                  把本模块的报警与计数全部复位，用干净窗口重新判。
+  Calls:         feature_r_reset()
+  Called By:     main.c 按键处理（KEY1 加档、KEY2 减档之后）
+  Input:         duty_pct  切换后的占空比百分数（0 表示切到停机档）
+  Output:        无
+  Return:        无
+  Others:        1) 切到停机档（0）时不做复位：停机本身由
+                      ai_monitor_notify_stopped() 的 0.5 s 逻辑接管；
+                  2) 【2026-10-21 起不再重新 init 模型库】上一代喂的是 R 电平，
+                      两档的 R 相差 16%，每档必须各学一份基线；这一代喂的是
+                      滚动峰峰值，实测两档 0.834 与 0.836 只差 0.2%，档位不敏感，
+                      一份预训练知识两档通用，切档只清窗不丢知识；
+                  3) 清窗后约 3.9 s 才重新攒满 32 点，这段屏上相似度显示 ---。
+-----------------------------------------------------------*/
+void ai_monitor_switch_level(uint8_t duty_pct)
+{
+    if ((g_initialized == 0U) || (g_enabled == 0U))  /* 没开 AI 就不必清 */
+    {
+        return;  /* 直接返回 */
+    }
+    if (duty_pct == 0U)  /* 切到停机档：交给停机逻辑处理 */
+    {
+        g_winEmpty = 0U;  /* 停机计时从零开始 */
+        return;  /* 直接返回 */
+    }
+
+    feature_r_reset();  /* 丢掉上一档的 32 点峰峰值窗 */
+
+    g_detectCount = 0U;  /* 重新计检测次数 */
+    g_lowRun = 0U;  /* 清低分计数 */
+    g_highRun = 0U;  /* 清高分计数 */
+    g_alarm = 0U;  /* 换工况后不保留上一档的报警 */
+    g_result_valid = 0U;  /* 结果置为无效 */
+    g_similarity = 0U;  /* 相似度归零 */
+    g_winEmpty = 0U;  /* 空窗计数归零 */
+    g_phase = AI_MONITOR_DETECTING;  /* 知识库保留，直接继续检测 */
 }
 
 /*-----------------------------------------------------------
@@ -243,9 +310,11 @@ void ai_monitor_notify_stopped(void)
                     防止拿半窗数据判异常；
                  2) 窗口由 feature_r 自己在停机/电压失效/转速过低时清空重建，
                     所以本函数不再重复做闸门判断；
-                 3) 报警与解除都要求连续 2 个窗（约 200 ms），抗单点抖动；
-                 4) 周期重学习只在相似度高于硬故障门限时计数，避免把真异常学成正常；
-                 5) 电机停过（连续 0.5 s 拿不到满窗）会重学基线，换工况后能自己恢复。
+                 3) 「要不要现场学习」由模型库的返回值决定，固件不写死窗数：
+                    detect() 回 NEAI_LEARNING_IN_PROGRESS 就退回学习分支；
+                 4) 报警与解除都要求连续 2 个窗（约 200 ms），抗单点抖动；
+                 5) 周期重学习只在相似度高于硬故障门限时计数，避免把真异常学成正常；
+                 6) 电机停过（连续 0.5 s 拿不到满窗）由 notify_stopped 清报警与计数。
 -----------------------------------------------------------*/
 void ai_monitor_tick(void)
 {
@@ -270,16 +339,29 @@ void ai_monitor_tick(void)
     g_winEmpty = 0U;  /* 拿到满窗，空窗计数归零 */
 
     /* ================= 学习分支 ================= */
-    if (g_learned < AI_MONITOR_LEARN_WINDOWS)  /* 还没学够 64 个窗 */
+    /* 只有两种情况会进来：库里没有预训练知识（上电就得从零学），
+     * 或者上一次 detect() 明确回了 NEAI_LEARNING_IN_PROGRESS。
+     * 带预训练知识时这条路根本不走，上电就能出检测结果。 */
+    if (g_needLearn != 0U)  /* 库还没学够 */
     {
+        if (g_learnLeft == 0U)  /* 这一轮配额已用完，但库还要 */
+        {
+            g_learnLeft = (uint16_t)AI_MONITOR_LEARN_MAX;  /* 再给一轮，学到底 */
+        }
+        --g_learnLeft;  /* 消耗一个学习配额 */
         st = neai_anomalydetection_learn(g_neai_in);  /* 喂一个窗进去学 */
         if ((st == NEAI_OK) ||  /* 返回成功 / */
-            (st == NEAI_LEARNING_IN_PROGRESS) ||  /* 还在学 / */
-            (st == NEAI_LEARNING_DONE))  /* 已达到最小学习次数 */
+            (st == NEAI_LEARNING_IN_PROGRESS))  /* 还在学 */
         {
             ++g_learned;  /* 学习次数 +1 */
-            g_phase = (g_learned >= AI_MONITOR_LEARN_WINDOWS) ?  /* 学够了就转检测 */
-                      AI_MONITOR_DETECTING : AI_MONITOR_LEARNING;  /* 否则继续学 */
+            g_phase = AI_MONITOR_LEARNING;  /* 保持在学习阶段 */
+        }
+        else if (st == NEAI_LEARNING_DONE)  /* 达到最少学习次数 */
+        {
+            ++g_learned;  /* 学习次数 +1 */
+            g_needLearn = 0U;  /* 清学习标志，下一拍开始检测 */
+            g_learnLeft = 0U;  /* 配额清零 */
+            g_phase = AI_MONITOR_DETECTING;  /* 转入检测阶段 */
         }
         else  /* 返回错误 */
         {
@@ -290,9 +372,20 @@ void ai_monitor_tick(void)
     }
 
     /* ================= 检测分支 ================= */
-    /* 把 32 点窗整个送进模型，模型内部会先做均值池化再算 Z-score，
-     * 输出一个 0~100 的相似度到 g_similarity。 */
+    /* 把 32 点峰峰值窗整个送进模型：模型内部先取 95 分位 / 峰值 / 25 分位
+     * 三个序统计量，再做增量聚类算距离，输出 0~100 的相似度到 g_similarity。 */
     st = neai_anomalydetection_detect(g_neai_in, &g_similarity);  /* 调库的检测接口 */
+
+    if (st == NEAI_LEARNING_IN_PROGRESS)  /* 库说知识还不够（最少学习次数未到） */
+    {
+        g_needLearn = 1U;  /* 退回学习分支，把知识补齐 */
+        g_phase = AI_MONITOR_LEARNING;  /* 阶段显示为学习中 */
+        g_result_valid = 0U;  /* 本次没有有效结果 */
+        g_lowRun = 0U;  /* 清低分计数 */
+        g_highRun = 0U;  /* 清高分计数 */
+        return;  /* 本次不参与报警判定 */
+    }
+
     g_phase = (st == NEAI_OK) ? AI_MONITOR_DETECTING : AI_MONITOR_ERROR;  /* 更新阶段 */
     g_result_valid = (st == NEAI_OK) ? 1U : 0U;  /* 记录本次结果是否有效 */
 
@@ -329,21 +422,20 @@ void ai_monitor_tick(void)
     }
 
     /* ---- 周期重学习：只要不是硬故障就照常累计 ---- */
-    /* 原来这里是「只要报警就完全不累计」，本意是防止把异常学成正常，
+    /* 原来是「只要报警就完全不累计」，本意是防止把异常学成正常，
      * 但板上实测会死锁：工况整体漂移（换负载后转速 150 变 216 rpm）时，
      * 相似度长期偏低、报警又不解除，重学习永远不触发，就再也回不来了。
-     * 现在改成用相似度本身来挡：只有落在硬故障区间才拒绝重学。 */
+     * 现在改成用相似度本身来挡：只有落在硬故障区间才拒绝重学。
+     * 【2026-10-21 换 ICM 库后改为增量补学】预训练知识本身是好的，
+     * 清空重学会把它丢掉，所以这里只 learn 一个窗、往知识库里补一点，
+     * 而且补学期间不停检测（不像上一代那样整段回到 LEARNING）。 */
     if (g_similarity >= AI_MONITOR_RELEARN_MIN_SIM)  /* 不是硬故障 */
     {
         ++g_detectCount;  /* 检测计数 +1 */
         if (g_detectCount >= AI_MONITOR_RELEARN_DETECTS)  /* 达到重学间隔 */
         {
             g_detectCount = 0U;  /* 计数归零 */
-            g_learned = 0U;  /* 学习次数归零，回到学习分支 */
-            g_lowRun = 0U;  /* 清低分计数 */
-            g_highRun = 0U;  /* 清高分计数 */
-            g_result_valid = 0U;  /* 结果置为无效 */
-            g_phase = AI_MONITOR_LEARNING;  /* 阶段回到学习 */
+            (void)neai_anomalydetection_learn(g_neai_in);  /* 补学一个窗，扩充知识库 */
         }
     }
 }

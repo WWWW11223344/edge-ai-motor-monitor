@@ -1,0 +1,18 @@
+[
+  {
+    "absolute": {}
+  },
+  {
+    "extract_features": {
+      "features": [
+        "n95",
+        "peak_value",
+        "n25"
+      ],
+      "entropy_bins": 20
+    }
+  },
+  {
+    "interleaved": {}
+  }
+]

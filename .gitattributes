@@ -1,0 +1,7 @@
+# 行尾策略：脚本与数据必须原样保存，其余交给编辑器
+# J-Link Commander 脚本若被转成 CRLF，\r 会被吃进命令，导致烧录静默失败
+*.jlink -text
+*.csv   -text
+*.bin   -text
+*.a     -text
+*.hex   -text

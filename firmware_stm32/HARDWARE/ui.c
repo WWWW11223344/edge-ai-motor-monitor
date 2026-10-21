@@ -186,18 +186,41 @@ void UI_Update(const UI_Data *d)
             }
             break;  /* 区域 1 结束 */
 
-        case 2U:  /* 区域 2：归一化转速比 R */
-            /* ---- R = 转速 / 母线电压（大字号，1 位整数 + 1 位小数） ---- */
-            if (d->r_valid != 0U)  /* R 有效（电机在转且电压通路正常） */
+        case 2U:  /* 区域 2：第一级转速比 R / 跳变幅度 dR 轮显 */
+            /* ---- 2026-10-21：这一行每 2 s 在 R 与 dR 之间切换 ----
+             * R  = 转速 / 母线电压，是绝对工作点，换档位整体平移；
+             * dR = 窗内 rpm/V 的绝对峰峰值，也就是跳变幅度。捏一下停一下
+             *      会把它顶到 2.1~2.5，稳定运行只有 0.3~0.6，
+             *      而且它不随档位平移，是真正的判定量（阈值 1.0）。
+             * 两者单位都是 rpm/V，所以右边的单位标签固定不用重画；
+             * 标签在 "R " 与 "dR" 之间切换，退回时多画一个空格擦掉 d。 */
+            if (((d->uptime_s / 2U) & 1U) != 0U)  /* 奇数 2 s 段：显示跳变幅度 */
             {
-                OLED_ShowFloat(BIG_VALUE_X, ROW_R, d->r_ratio,  /* 正常约 13.3，异常掉到 11 以下 */
-                               1U, 1U, FONT_BIG);  /* 形如 xx.x，与无效标记同宽 4 字 */
+                OLED_ShowString(BIG_LABEL_X, ROW_R, "dR", FONT_BIG);  /* 标签 dR */
+                if (d->ripple_valid != 0U)  /* 窗口已满，幅度可用 */
+                {
+                    OLED_ShowFloat(BIG_VALUE_X, ROW_R,
+                                   (d->ripple_abs > 9.99f) ? 9.99f : d->ripple_abs,  /* 字段只有 1 位整数，先钳位 */
+                                   1U, 2U, FONT_BIG);  /* 输出 x.xx */
+                }
+                else  /* 窗口没满，先不给数 */
+                {
+                    OLED_ShowString(BIG_VALUE_X, ROW_R, "--.--", FONT_BIG);  /* 显示 --.-- */
+                }
             }
-            else  /* R 无效：电机没转或电压通路失效 */
+            else  /* 偶数 2 s 段：显示 R */
             {
-                OLED_ShowString(BIG_VALUE_X, ROW_R, "--.-", FONT_BIG);  /* 显示 --.- */
+                OLED_ShowString(BIG_LABEL_X, ROW_R, "R ", FONT_BIG);  /* 标签 R，多一个空格擦掉上次的 d */
+                if (d->r_valid != 0U)  /* R 有效，电机在转且电压通路正常 */
+                {
+                    OLED_ShowFloat(BIG_VALUE_X, ROW_R, d->r_ratio, 1U, 1U, FONT_BIG);  /* 输出 xx.x */
+                }
+                else  /* R 无效 */
+                {
+                    OLED_ShowString(BIG_VALUE_X, ROW_R, "--.-", FONT_BIG);  /* 显示 --.- */
+                }
             }
-            break;  /* 区域 2 结束 */
+            break;  /* 结束 2 区域 */
 
         case 3U:  /* 区域 3：母线电压 + 状态 */
             /* ---- 母线电压和状态（小字号，数值/无效标记均为四列） ---- */

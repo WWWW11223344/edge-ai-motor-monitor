@@ -1,9 +1,0 @@
-[
-  {
-    "pooling": {
-      "strategy": "mean",
-      "output_percentage": 5,
-      "n_windows": 1
-    }
-  }
-]

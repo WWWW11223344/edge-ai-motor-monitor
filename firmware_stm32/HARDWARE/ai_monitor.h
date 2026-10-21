@@ -54,24 +54,17 @@ extern "C" {        /* 开启 C 链接区 */
  * 报警仍要求连续 2 窗，单点抖动不会误触发。 */
 #define AI_MONITOR_THRESHOLD       32U
 
-/* 学习阶段需要喂多少个窗。
- * 【为什么不取 metadata.json 给的 16】
- * 16 是模型达到标称精度所需的最少次数，但实测它正好落在精度拐点上：
- * 正常侧最低分只有 54，离阈值 48 只剩 6 分余量，工况略微漂移就会误报。
- * 【实测依据】同一批数据、同一份库，只改学习窗数：
- *   12 窗 -> 正常最低 19（还没学到稳定，不可用）
- *   16 窗 -> 正常最低 54，捏轴最高  1，独立批最低 64
- *   32 窗 -> 正常最低 64，捏轴最高 37，独立批最低 91
- *   64 窗 -> 正常最低 60，捏轴最高 20，独立批最低 91（采用）
- *   96 窗 -> 正常最低 58，捏轴最高  9
- * 64 窗在两个方向上余量最均衡，而且没参与训练的独立批最低分
- * 从 16 窗的 64 提到 91，跨工况泛化明显更好。
- * 【耗时】窗口填满 32 点需要 3.2 s，之后每 100 ms 学一个窗，
- * 64 窗合计约 3.2 + 6.4 = 9.6 s，即上电约 10 秒进入检测阶段。
- * 【注意】模型库在第 16 次 learn 后就返回 NEAI_LEARNING_DONE，
- * 所以本模块不以返回值为准，而是以这个计数器为准，
- * 回调返回值只用来报错。 */
-#define AI_MONITOR_LEARN_WINDOWS   64U
+/* 现场学习的兜底上限窗数（只有模型库明确要求学习时才会用到）。
+ * 【为什么不再是 64】上一代 ZSM 库最少 16 次就学够，64 是离线标定出来的
+ * 最优值；这一代 ICM 库的 metadata.json 里写的是 learning_min_lines = 368，
+ * 也就是至少要喂 368 个窗（约 36.8 s）库才会返回 NEAI_LEARNING_DONE。
+ * 固件若还按 64 窗就转去检测，detect() 会一直返回 NEAI_LEARNING_IN_PROGRESS，
+ * 结果是永远没有相似度、永远不报警 —— 这个坑必须避开。
+ * 现在把「学多少个窗」的决定权交给模型库自己的返回值，本常量只作兜底：
+ * 368 再留 32 个窗余量。
+ * 【正常路径用不到它】库自带预训练知识（NanoEdgeAI.h 写明 pretrained
+ * model is embedded in the library），上电 init(true) 之后直接就能检测。 */
+#define AI_MONITOR_LEARN_MAX       400U
 
 /* 周期重学习的间隔（以检测次数计）。
  * 现在每个 R 点（约 100 ms）就检一次，所以 6000 次约等于 10 分钟。
@@ -104,7 +97,7 @@ extern "C" {        /* 开启 C 链接区 */
 /* 四个阶段。该状态通过遥测帧的 aiState 字节发给 D1，
  * 手机页面上会直接显示「未启用 / 学习中 / 检测中 / 错误」。
  *   OFF       = 关闭 AI（采集模式，g_enabled = 0）
- *   LEARNING  = 正在现场学习（上电后、或周期重学期间）
+ *   LEARNING  = 库要求现场学习（库里没有预训练知识时；有则上电即可检测）
  *   DETECTING = 学习完成，正在持续检测
  *   ERROR     = 模型初始化失败或调用报错（需重启/查）
  * 枚举值必须与协议里的 M2_AI_* 一一对应，不要随意改数字。 */
@@ -125,7 +118,9 @@ void ai_monitor_init(void);   /* 初始化模型库（main.c 上电调一次） */
  *   ai_monitor_get_similarity()  取最近一次相似度（目前仅供调试取用）
  *   ai_monitor_has_result()      最近一次检测结果是否有效
  *   ai_monitor_is_alarm()        是否处于报警态（遥测帧的 AI 报警位）
- *   ai_monitor_get_fill()        学习进度（0..AI_MONITOR_LEARN_WINDOWS）
+ *   ai_monitor_get_fill()        学习进度（0..255）
+ *   ai_monitor_notify_stopped()  转速 < 20 rpm 时每 10 ms 调一次，0.5 s 后重学
+ *   ai_monitor_switch_level()    切档后调一次，清窗 + 清模型 + 重学本档基线
  * 【约束】除 ai_monitor_init() 外均只在主循环上下文调用，不要在中断里调。 */
 void ai_monitor_tick(void);
 
@@ -133,13 +128,23 @@ void ai_monitor_tick(void);
  * 连续 AI_MONITOR_STOP_TICKS 拍（0.5 s）都停机就把学习状态归零，
  * 重新起转时按当前工况重学基线。 */
 void ai_monitor_notify_stopped(void);
+
+/* 切档通知：main.c 按键处理里改完档位、重设 PWM 之后调用一次。
+ * 作用是把上一档的峰峰值窗口和报警计数全部作废，用干净窗口重新判。
+ * 参数是切换后的占空比百分数；传 0（停机档）时本函数只清停机计时，
+ * 真正的清窗交给 feature_r_tick() 自己的闸门。
+ * 【2026-10-21 起不再重学基线】上一代喂的是 R 电平，R 里带了占空比补偿，
+ * 两档之间转速并不按占空比等比例变化，所以每一档都必须有自己的基线；
+ * 这一代喂的是滚动峰峰值，实测两档 0.834 与 0.836 只差 0.2%，档位不敏感，
+ * 一份预训练知识两档通用，切档只清窗、不重新初始化模型库。 */
+void ai_monitor_switch_level(uint8_t duty_pct);
 /* 采集/部署切换：0 = 只采集（不跑模型），1 = 开启学习/检测。 */
 void ai_monitor_set_enabled(uint8_t enabled);
 AiMonitorPhase ai_monitor_get_phase(void);
 uint8_t ai_monitor_has_result(void);   /* 最近一次检测结果是否有效 */
 uint8_t ai_monitor_get_similarity(void);  /* 最近一次相似度（0~100） */
 uint8_t ai_monitor_is_alarm(void);   /* 是否处于报警态（遥测帧 AI 报警位） */
-/* 学习进度：已完成的 learn 次数，0..AI_MONITOR_LEARN_WINDOWS。 */
+/* 学习进度：已完成的 learn 次数，0..255（实际可能更多，超出封顶）。 */
 uint8_t ai_monitor_get_fill(void);
 
 #ifdef __cplusplus  /* C++ 下按 C 方式链接 */

@@ -1,0 +1,56 @@
+[
+  {
+    "absolute": {
+      "input_dimension": {
+        "n_samples": 1126,
+        "n_features": 32,
+        "n_channels": 1
+      },
+      "output_dimension": {
+        "n_samples": 1126,
+        "n_features": 32,
+        "n_channels": 1
+      },
+      "context": null
+    }
+  },
+  {
+    "extract_features": {
+      "input_dimension": {
+        "n_samples": 1126,
+        "n_features": 32,
+        "n_channels": 1
+      },
+      "output_dimension": {
+        "n_samples": 1126,
+        "n_features": 3,
+        "n_channels": 1
+      },
+      "context": {
+        "_frozen": false,
+        "fft_size": null
+      },
+      "features": [
+        "n95",
+        "peak_value",
+        "n25"
+      ],
+      "entropy_bins": 20
+    }
+  },
+  {
+    "interleaved": {
+      "input_dimension": {
+        "n_samples": 1126,
+        "n_features": 3,
+        "n_channels": 1
+      },
+      "output_dimension": {
+        "n_samples": 1126,
+        "n_features": 3,
+        "n_channels": 1
+      },
+      "context": null
+    }
+  }
+]

@@ -1,11 +1,12 @@
 device STM32F407ZG
-speed 1000
+speed 4000
+h
+r
 h
 w4 0x40026440 0x00000000
 w4 0x40012108 0x00000000
 w4 0x40012304 0x00000000
 erase
-loadfile H:/STM32_LERN/19_OLED/OBJ/STM32F407_Template.hex 0x08000000
+loadfile STM32F407_Template.hex 0x08000000
 r
-g
 exit

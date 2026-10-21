@@ -1,4 +1,4 @@
-# STM32 固件目录说明
+# STM32 固件目录说明（2026-10-21 定版）
 
 本目录是 Keil MDK 5（MDK-ARM Standard 5.14，ARMCC 5.05）可直接打开的完整工程，
 对应板上实测通过的最终版本。
@@ -9,20 +9,21 @@
 |---|---|
 | `USER/` | 入口 `main.c`、中断 `stm32f4xx_it.c`、系统时钟 `system_stm32f4xx.c`、Keil 工程 `STM32F407_Template.uvprojx` |
 | `HARDWARE/` | 自写板级驱动，共 16 组 `.c/.h`（见下表） |
-| `NEAI/` | NanoEdge AI 静态库 `libneai.a` + 头文件 `NanoEdgeAI.h`（result_id 44 / ZSM） |
+| `NEAI/` | NanoEdge AI 静态库 `libneai.a` + 头文件 `NanoEdgeAI.h`（result_id 68 / **ICM 分类库**） |
 | `CORE/` | CMSIS 内核头文件与启动文件 `startup_stm32f40_41xxx.s` |
 | `FWLIB/` | StdPeriph V1.4，只保留实际用到的 7 个外设（misc / adc / dma / gpio / rcc / tim / usart） |
-| `OBJ_firmware/` | 最终编译产物：`.hex`、`.map`、烧录脚本 `burn_r64_20261019.jlink` |
+| `OBJ_firmware/` | 最终编译产物：`STM32F407_Template.hex`、同名 `.map`、烧录脚本 `burn_final_20261021.jlink` |
+| `OBJ/` | Keil 的编译输出目录（空目录，Build 时自动填充） |
 
 ## 源文件职责
 
 | 文件 | 职责 |
 |---|---|
-| `ai_monitor.c/h` | AI 状态机：学习 / 检测 / 报警 / 停机重学，包裹 NanoEdge 库调用 |
-| `feature_r.c/h` | 特征量 R 的滑动窗口，每 100 ms 推一个点，32 点成窗 |
+| `ai_monitor.c/h` | AI 状态机：预训练知识直接进检测 / 报警 / 停机后只清报警不重学，包裹 NanoEdge 库调用 |
+| `feature_r.c/h` | 三路特征：`R_new`（膝点归一化水平值，32 点喂 AI）、`dR`（窗内滚动峰峰值，显式阈值判决）、`g_ripplePct`（相对百分比，仅供 Watch 观察） |
 | `encoder.c/h` | TIM4 编码器接口，四倍频，1040 counts/圈 |
-| `pwm.c/h` | TIM9 双路 PWM（20 kHz），档位与占空比 |
-| `current.c/h` | ACS712 电流采样，上电零点校准 |
+| `pwm.c/h` | TIM9 双路 PWM（20 kHz），档位与占空比（L1 = 58%，L2 = 64%） |
+| `current.c/h` | ACS712 电流采样，上电零点校准 + **DWT 采样相位抖动**（消除 PWM 纹波与采样节拍混叠） |
 | `vbat.c/h` | 母线电压采样，板载 10k+1k 分压 1/11 |
 | `telemetry.c/h` | 42 字节遥测帧组包，USART3 以 10 Hz 推送 |
 | `m2_protocol.c/h` | M2 帧格式定义与 CRC16（与 D1 mini 侧同一份实现） |
@@ -33,12 +34,26 @@
 
 ## 编译与烧录
 
-- **编译**：Keil 打开 `USER/STM32F407_Template.uvprojx` 直接 Build；命令行可用
-  `UV4.exe -b USER\STM32F407_Template.uvprojx -j0 -o build.log`。
-  最终构建尺寸见 `USER/build_r64.log`：`Code=18200 RO-data=3480 RW-data=216 ZI-data=14216`。
-- **烧录**：可直接用 `OBJ_firmware/STM32F407_Template.hex`（2026-10-19 上板实测版）。
-- **历史产物**：`OBJ_firmware/` 里的 `.hex` 与 `.map` 是同一次构建的产物，两者的
-  Grand Totals 一致；源码改动后再编译，`.map` 里的符号地址会整体平移，调试读内存前需重新取地址。
+- **编译**：Keil 打开 `USER/STM32F407_Template.uvprojx` 直接 Build；命令行用
+  `UV4.exe -b USER\STM32F407_Template.uvprojx -j0 -o 日志绝对路径`
+  （`-o` 只给相对路径时不会生成日志文件）。
+  当前构建尺寸：`Code=22288 RO-data=6548 RW-data=264 ZI-data=17992`，0 Error 0 Warning，
+  完整日志见 `USER/build_final_20261021.log`。
+- **烧录**：直接用 `OBJ_firmware/STM32F407_Template.hex`
+  （md5 `eb7e23174ca6873ddb9aa1962eccae4e`，与上面这组尺寸是同一次构建的产物）。
+  配套脚本 `OBJ_firmware/burn_final_20261021.jlink` 用的是**相对路径**，
+  需 `cd` 到 `OBJ_firmware/` 目录再执行：
+  `E:\Keil_v5\ARM\Segger\JLink.exe -CommanderScript burn_final_20261021.jlink`。
+  脚本要点：
+  - 第一行必须是 `device STM32F407ZG`，**不能省**。省掉后 erase 会被静默拒绝，
+    而 loadbin 照样打印 O.K.，结果 flash 一字未变（假成功）；
+  - 已包含烧前关闭 ADC2 / DMA2 的三条 `w4`，不关会在 RAM check 处失败；
+  - 若报 `Programming failed`，多半是上一轮 J-Link 会话残留，`h` 之后补一次 `r` 即过。
+- **尺寸证据**：`OBJ_firmware/STM32F407_Template.map` 是完整的 armlink listing
+  （含 Image Symbol Table / Global Symbols / Memory Map / Image component sizes 四段），
+  `Total RO Size = 28836 (28.16 kB)`、`Total RW Size = 18256 (17.83 kB)`，
+  与 hex 同一次链接产出。源码改动后再编译，`.map` 里的符号地址会整体平移，
+  用 J-Link 读内部变量前需重新取地址。
 
 ## 已移除的文件（不在本目录）
 
@@ -48,5 +63,7 @@
   `value[1..3]` 保留字段但恒不写入，`validMask` 的 bit1~bit3 恒为 0。
 - **19 维特征相关**：`feature19.c/h`，已由 `feature_r.c/h` 取代。
 - **页面字符串**：`monitor_page.h` 从不在 STM32 工程内，它属于 D1 mini 固件
-  （`../firmware_d1mini/monitor_page.h`）。主控只发二进制帧，不承载 HTTP。
+  （`../02_D1mini网页监视器/monitor_page.h`）。主控只发二进制帧，不承载 HTTP。
 - **编译中间件**：`OBJ/*.o`、`Listings/`、`*.uvguix.*`、`JLinkLog.txt` 等不入库。
+- **`keil_keil.bat`**：原例程自带的清理脚本，会 `del *.map /s`，**会把
+  `OBJ_firmware/STM32F407_Template.map` 一起删掉**，故已移出本包。
