@@ -13,7 +13,7 @@
 <text x="316.0" y="115.5" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="13.0" fill="#FFFFFF" text-anchor="start" font-weight="bold">对外呈现：页面由 ESP8266 独立承载，STM32 只发帧、不渲染</text>
 <rect x="324.0" y="132.0" width="300.0" height="92.0" rx="7.0" ry="7.0" fill="#FFFFFF" stroke="#6B5B95" stroke-width="1.5"/>
 <text x="474.0" y="153.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="12.0" fill="#6B5B95" text-anchor="middle" font-weight="bold">ESP8266 D1 mini</text>
-<text x="474.0" y="171.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="10.3" fill="#41505F" text-anchor="middle" font-weight="normal">AT 固件与页面资源合并为单个 .ino</text>
+<text x="474.0" y="171.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="10.3" fill="#41505F" text-anchor="middle" font-weight="normal">Arduino 固件与页面资源合并为单个 .ino</text>
 <text x="474.0" y="186.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="10.3" fill="#41505F" text-anchor="middle" font-weight="normal">内置 HTTP 服务，轮询 /status 应答</text>
 <text x="474.0" y="201.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="10.3" fill="#41505F" text-anchor="middle" font-weight="normal">解析 42 字节帧，本地算链路状态</text>
 <rect x="774.0" y="132.0" width="210.0" height="92.0" rx="7.0" ry="7.0" fill="#FFFFFF" stroke="#6B5B95" stroke-width="1.5"/>
@@ -29,7 +29,7 @@
 <text x="1030.0" y="152.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="11.2" fill="#6B5B95" text-anchor="start" font-weight="bold">页面承载的四类信息（详见第三章 5.3 节）</text>
 <text x="1032.0" y="171.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="9.8" fill="#41505F" text-anchor="start" font-weight="normal">① 顶部胶囊：通信正常 / 等待数据 / 通信中断</text>
 <text x="1032.0" y="184.5" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="9.8" fill="#41505F" text-anchor="start" font-weight="normal">② 判定主卡：正常 / 学习中 / 异常 / 待机 / 未启用 / 推理故障</text>
-<text x="1032.0" y="198.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="9.8" fill="#41505F" text-anchor="start" font-weight="normal">③ 六格数据：转速、电流、母线、R、档位、当前占空比</text>
+<text x="1032.0" y="198.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="9.8" fill="#41505F" text-anchor="start" font-weight="normal">③ 数据清单：转速、R、dR、电流、母线、档位</text>
 <text x="1032.0" y="211.5" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="9.8" fill="#41505F" text-anchor="start" font-weight="normal">④ 诊断行：数据年龄、有效帧、异常帧、版本、缺路提示</text>
 <rect x="40.0" y="304.0" width="6.0" height="124.0" rx="0.0" fill="#3E8E5A" stroke="none" stroke-width="0.0"/>
 <text x="58.0" y="336.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="16.0" fill="#3E8E5A" text-anchor="start" font-weight="bold">第三层</text>
@@ -42,7 +42,7 @@
 <text x="474.0" y="357.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="12.0" fill="#3E8E5A" text-anchor="middle" font-weight="bold">OLED（SSD1306 128×64）</text>
 <text x="474.0" y="375.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="10.3" fill="#41505F" text-anchor="middle" font-weight="normal">板载 I2C1：PB8 / PB9</text>
 <text x="474.0" y="390.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="10.3" fill="#41505F" text-anchor="middle" font-weight="normal">3 行大字 + 2 行小字，8 页缓冲</text>
-<text x="474.0" y="405.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="10.3" fill="#41505F" text-anchor="middle" font-weight="normal">4 种页面：运行 / 参数 / 波形 / 诊断</text>
+<text x="474.0" y="405.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="10.3" fill="#41505F" text-anchor="middle" font-weight="normal">转速 / 电流 / R / 底条 dR，单屏无切页</text>
 <rect x="654.0" y="336.0" width="300.0" height="92.0" rx="7.0" ry="7.0" fill="#FFFFFF" stroke="#3E8E5A" stroke-width="1.5"/>
 <text x="804.0" y="357.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="12.0" fill="#3E8E5A" text-anchor="middle" font-weight="bold">板载三按键</text>
 <text x="804.0" y="375.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="10.3" fill="#41505F" text-anchor="middle" font-weight="normal">PE4 急停 / PE3 档位+ / PE2 档位-</text>
@@ -51,7 +51,7 @@
 <rect x="984.0" y="336.0" width="300.0" height="92.0" rx="7.0" ry="7.0" fill="#FFFFFF" stroke="#3E8E5A" stroke-width="1.5"/>
 <text x="1134.0" y="357.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="12.0" fill="#3E8E5A" text-anchor="middle" font-weight="bold">报警指示 PF9</text>
 <text x="1134.0" y="375.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="10.3" fill="#41505F" text-anchor="middle" font-weight="normal">低电平点亮，仅报警时亮</text>
-<text x="1134.0" y="390.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="10.3" fill="#41505F" text-anchor="middle" font-weight="normal">与心跳灯分离，避免误判</text>
+<text x="1134.0" y="390.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="10.3" fill="#41505F" text-anchor="middle" font-weight="normal">独立指示，不参与判定</text>
 <text x="1134.0" y="405.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="10.3" fill="#41505F" text-anchor="middle" font-weight="normal">3 s 内可被人眼确认</text>
 <rect x="40.0" y="508.0" width="6.0" height="190.0" rx="0.0" fill="#2F5D8A" stroke="none" stroke-width="0.0"/>
 <text x="58.0" y="540.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="16.0" fill="#2F5D8A" text-anchor="start" font-weight="bold">第二层</text>
@@ -71,8 +71,8 @@
 <circle cx="574.0" cy="561.0" r="8.6" fill="#2F5D8A"/>
 <text x="574.0" y="565.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="9.2" fill="#FFFFFF" text-anchor="middle" font-weight="bold">2</text>
 <text x="588.0" y="566.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="11.8" fill="#2F5D8A" text-anchor="start" font-weight="bold">特征</text>
-<text x="665.0" y="587.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="10.0" fill="#41505F" text-anchor="middle" font-weight="normal">R = rpm / Vbus</text>
-<text x="665.0" y="601.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="10.0" fill="#41505F" text-anchor="middle" font-weight="normal">32 点 x 100 ms = 3.2 s</text>
+<text x="665.0" y="587.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="10.0" fill="#41505F" text-anchor="middle" font-weight="normal">q = rpm / Vbus（100 ms 一点）</text>
+<text x="665.0" y="601.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="10.0" fill="#41505F" text-anchor="middle" font-weight="normal">8 点峰峰值 PtP -&gt; 32 点窗</text>
 <text x="665.0" y="615.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="10.0" fill="#41505F" text-anchor="middle" font-weight="normal">窗未满不推理</text>
 <line x1="539.0" y1="598.0" x2="554.0" y2="598.0" stroke="#2F5D8A" stroke-width="1.6"/>
 <polygon points="558.0,598.0 549.5,602.2 549.5,593.8" fill="#2F5D8A"/>
@@ -80,17 +80,17 @@
 <circle cx="809.0" cy="561.0" r="8.6" fill="#6B5B95"/>
 <text x="809.0" y="565.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="9.2" fill="#FFFFFF" text-anchor="middle" font-weight="bold">3</text>
 <text x="823.0" y="566.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="11.8" fill="#6B5B95" text-anchor="start" font-weight="bold">推理</text>
-<text x="900.0" y="587.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="10.0" fill="#41505F" text-anchor="middle" font-weight="normal">NanoEdge ZSM 库</text>
-<text x="900.0" y="601.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="10.0" fill="#41505F" text-anchor="middle" font-weight="normal">RAM 56 B / Flash 40 B</text>
-<text x="900.0" y="615.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="10.0" fill="#41505F" text-anchor="middle" font-weight="normal">signal_len 32, dim 1</text>
+<text x="900.0" y="587.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="10.0" fill="#41505F" text-anchor="middle" font-weight="normal">NanoEdge ICM 68 号库</text>
+<text x="900.0" y="601.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="10.0" fill="#41505F" text-anchor="middle" font-weight="normal">RAM 3668 B / Flash 3108 B</text>
+<text x="900.0" y="615.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="10.0" fill="#41505F" text-anchor="middle" font-weight="normal">input_size 3（n95/peak/n25）</text>
 <line x1="774.0" y1="598.0" x2="789.0" y2="598.0" stroke="#6B5B95" stroke-width="1.6"/>
 <polygon points="793.0,598.0 784.5,602.2 784.5,593.8" fill="#6B5B95"/>
 <rect x="1029.0" y="546.0" width="212.0" height="104.0" rx="7.0" ry="7.0" fill="#FFFFFF" stroke="#B07D18" stroke-width="1.5"/>
 <circle cx="1044.0" cy="561.0" r="8.6" fill="#B07D18"/>
 <text x="1044.0" y="565.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="9.2" fill="#FFFFFF" text-anchor="middle" font-weight="bold">4</text>
 <text x="1058.0" y="566.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="11.8" fill="#B07D18" text-anchor="start" font-weight="bold">决策</text>
-<text x="1135.0" y="587.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="10.0" fill="#41505F" text-anchor="middle" font-weight="normal">相似度 &gt;= 32 判正常</text>
-<text x="1135.0" y="601.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="10.0" fill="#41505F" text-anchor="middle" font-weight="normal">2 窗确认 / 2 窗解除</text>
+<text x="1135.0" y="587.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="10.0" fill="#41505F" text-anchor="middle" font-weight="normal">相似度 &gt;= 32 判正常，2 窗确认</text>
+<text x="1135.0" y="601.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="10.0" fill="#41505F" text-anchor="middle" font-weight="normal">dR &gt; 1.0 连续 2 窗报异常</text>
 <text x="1135.0" y="615.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="10.0" fill="#41505F" text-anchor="middle" font-weight="normal">停机 0.5 s 基线作废</text>
 <line x1="1009.0" y1="598.0" x2="1024.0" y2="598.0" stroke="#B07D18" stroke-width="1.6"/>
 <polygon points="1028.0,598.0 1019.5,602.2 1019.5,593.8" fill="#B07D18"/>
