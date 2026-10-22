@@ -39,7 +39,7 @@
 | 文件编码 | **UTF-8（无 BOM）** | Keil MDK 5.14 的 uVision 内置「Encode in UTF-8 without signature」选项，UTF-8 中文注释在编辑器里正常显示；同时 GitHub 网页按 UTF-8 渲染，源码在网页上不会乱码 |
 | 行尾 | **原样保留**（部分文件 CRLF、部分 LF） | 与实际编译验证过的工程逐字节一致。`.gitattributes` 对全部文本类扩展名（`*.c` `*.h` `*.s` `*.ino` `*.cpp` `*.hex` `*.map` `*.log` `*.ini` `*.jlink` `*.uvprojx` `*.uvoptx` `*.md` `*.json` `*.csv` `*.svg` `*.txt`）声明 `-text`，二进制声明 `binary`，克隆下来行尾不会被 `core.autocrlf` 改写 |
 | 行尾入库验证 | 仓库内 121 个已跟踪文件，远程 blob 与工作区**逐字节一致**（0 处差异） | 2026-10-22 实测：`.gitattributes` 的规则对「添加前已入库」的文件不生效，已对 19 个曾被 `core.autocrlf` 归一化成 LF 的文件（FWLIB 14 个 + `.map` + `.ini` + 3 个 `.svg`）执行 `git rm --cached` + `git add` 重新入库 |
-| 编译验证 | ARMCC 5.05 对 UTF-8 源文件编译结果与 GBK 版**逐字节相同** | `Code=22296 RO-data=6548 RW-data=264 ZI-data=17992`，0 Error 0 Warning，hex md5 `d5483850d3cb58adc392afc50b4f6399` |
+| 编译验证 | ARMCC 5.05 对 UTF-8 源文件编译结果与 GBK 版**逐字节相同** | 该次对照实验用的是 10-22 白天版：`Code=22296 RO-data=6548 RW-data=264 ZI-data=17992`，0 Error 0 Warning，hex md5 `d5483850d3cb58adc392afc50b4f6399`；当前定版尺寸见下面「编译与烧录」 |
 
 > 早期版本本仓库的 `.c/.h` 用的是 GBK 编码。ARMCC 5 虽能正常编译，但 GitHub 网页
 > 按 UTF-8 渲染 GBK 字节，`main.c` 会出现 7613 个替换字符（乱码）。因此统一改为
@@ -50,21 +50,23 @@
 > | 变更 | hex md5 | 说明 |
 > | --- | --- | --- |
 > | GBK → UTF-8（纯编码转换） | `eb7e23174ca6873ddb9aa1962eccae4e` | **产物逐字节未变**，A/B 编译实测确认 |
-> | 2026-10-22 修 OLED 显示缺陷 | `d5483850d3cb58adc392afc50b4f6399` | Code 22288 → 22296，**当前有效版本** |
+> | 2026-10-22 白天：修 OLED 显示缺陷 | `d5483850d3cb58adc392afc50b4f6399` | Code 22288 → 22296 |
+> | 2026-10-22 晚：UI v1.6 定版 | `013b3127adf9fff862340accbf3984b2` | Code 22644，**当前有效版本** |
 >
-> 即：编码转换本身不影响机器码；现在 hex 与 10-22 之前的不同，是因为 OLED 显示
-> 缺陷修复（`ui.c` 的 R 行整数位由 1 位改 2 位、dR 无效态由 5 字符改 4 字符）
-> 引起的，与编码无关。
+> 即：编码转换本身不影响机器码；hex 与 10-22 之前的不同，先是因为 OLED 显示
+> 缺陷修复（`ui.c` 的 R 行整数位由 1 位改 2 位、dR 无效态由 5 字符改 4 字符），
+> 后来又因为 UI v1.6 的底条重排与去心跳，与编码无关。
 
 ## 编译与烧录
 
 - **编译**：Keil 打开 `USER/STM32F407_Template.uvprojx` 直接 Build；命令行用
   `UV4.exe -b USER\STM32F407_Template.uvprojx -j0 -o 日志绝对路径`
   （`-o` 只给相对路径时不会生成日志文件）。
-  当前构建尺寸：`Code=22296 RO-data=6548 RW-data=264 ZI-data=17992`，0 Error 0 Warning，
-  完整日志见 `USER/build_final_20261021.log`。
+  当前构建尺寸：`Code=22644 RO-data=6544 RW-data=276 ZI-data=17988`，0 Error 0 Warning，
+  烧录映像 29464 B（`.map` 的 Load Region `0x7318`），
+  完整日志见 `USER/build_final_20261022.log`（10-21 那次的日志 `build_final_20261021.log` 留作历史）。
 - **烧录**：直接用 `OBJ_firmware/STM32F407_Template.hex`
-  （md5 `d5483850d3cb58adc392afc50b4f6399`，与上面这组尺寸是同一次构建的产物）。
+  （82925 B，md5 `013b3127adf9fff862340accbf3984b2`，与上面这组尺寸是同一次构建的产物）。
   配套脚本 `OBJ_firmware/burn_final_20261021.jlink` 用的是**相对路径**，
   需 `cd` 到 `OBJ_firmware/` 目录再执行：
   `E:\Keil_v5\ARM\Segger\JLink.exe -CommanderScript burn_final_20261021.jlink`。

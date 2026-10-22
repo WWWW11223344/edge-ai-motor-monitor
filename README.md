@@ -19,7 +19,7 @@
 | 报警判定 | 相似度 < **32** 连续 2 窗；并联显式判据 dR > **1.0 rpm/V** 连续 2 窗（dR = 32 点窗内极差，不喂模型） |
 | 检测时延 | 捏轴后约 **3~3.5 s** 报警，松开后自动解除 |
 | 支持档位 | 58%（约 140 rpm）与 64%（约 245~260 rpm）两档通用 |
-| 固件尺寸 | Code 22296 / RO 6548 / RW 264 / ZI 17992 B |
+| 固件尺寸 | Code 22644 / RO 6544 / RW 276 / ZI 17988 B（烧录映像 29464 B） |
 
 ## 系统组成
 
@@ -126,6 +126,7 @@ docs/                      文档与图示
   总体架构图 / 硬件连接图 / 程序流程图          PNG + SVG 双格式
   页面实拍_*.png                            监控页面四态截图（按页面源码渲染）
   图示/屏面版式_*.png                       OLED 屏面版式（按真实字库渲染）
+  图示/实物照_OLED运行显示.jpg              真机实拍（L2 档 237 rpm，v1.6 版面）
 ```
 
 ## 编译产物尺寸
@@ -134,15 +135,15 @@ Keil 全量重建，0 Error 0 Warning：
 
 | 段 | 大小 |
 |---|---|
-| Code | 22296 B |
-| RO-data | 6548 B |
-| RW-data | 264 B |
-| ZI-data | 17992 B |
-| 合计 ROM | 29100 B（Code + RO + RW） |
+| Code | 22644 B |
+| RO-data | 6544 B |
+| RW-data | 276 B |
+| ZI-data | 17988 B |
+| 合计 ROM | 29464 B（Code + RO + RW） |
 
 共 27 个编译单元（26 个 `.c` + 1 个启动文件），FWLIB 只保留 misc / adc / dma / gpio / rcc / tim / usart。
-`OBJ_firmware/` 里的 `.hex` 与 `.map` 是同一次构建产物，`.map` 的 Load Region 为 `0x71AC`（29100 B），
-与上表一致。烧录后用 J-Link `mem32` 回读 `0x08000000` 起 256 字节，与 hex 逐字节相同。
+`OBJ_firmware/` 里的 `.hex` 与 `.map` 是同一次构建产物，`.map` 的 Load Region 为 `0x7318`（29464 B），
+与上表一致；hex 文件 82925 B，md5 `013b3127adf9fff862340accbf3984b2`。
 
 NanoEdge AI 模型本身占 **RAM 3668 B / Flash 3108 B**。库端 `learning_min_lines = 368`
 是「库如果要现场学习，至少要喂 368 行」的意思；本版用的是库内预训练知识
@@ -167,6 +168,12 @@ NanoEdge AI 模型本身占 **RAM 3668 B / Flash 3108 B**。库端 `learning_min
 四种页面状态见 `docs/页面实拍_正常检测.png`、`页面实拍_异常报警.png`、
 `页面实拍_学习中.png`、`页面实拍_停机.png`；OLED 侧的同源屏面见
 `docs/图示/屏面版式_正常检测.png`。
+
+真机实拍见 `docs/图示/实物照_OLED运行显示.jpg`。这一帧是 L2 档带载运行时的画面：
+`Spd 237 rpm` / `Cur 0.01 A` / `R 12.71 rpm/V` / `Bat 10.7V  S:100 RUN` /
+底条 `DET L2  dR 0.21  4988 s`。R 与三个原始量自洽：`q = 237 / 10.7 = 22.15`，
+乘 `8 / (64 - 50)` 得 **12.66**，屏上 12.71（转速是整数 rpm、电压是一位小数，
+这点差异就是量化误差）。
 
 ### 电流读数为什么曾经是负的
 
@@ -208,6 +215,12 @@ NanoEdge AI 模型本身占 **RAM 3668 B / Flash 3108 B**。库端 `learning_min
     老式 `×(58/duty)` 在这两档会差 61%，必然误报
   - 64% 档实测 242.3 rpm，与标定值 245 rpm 吻合；相似度 100；dR 0.13~0.24；无保护触发
   - 完整过程见 [`docs/烧录记录_20261022.md`](docs/烧录记录_20261022.md)
+- **当晚又升级到 UI v1.6（定版）**：底条按板上真实渲染重排（阶段标记 `DET`/`LRN` 在 0 列、
+  档位 20、dR 标签 41、dR 数值 56、秒数 83、`s` 116），并去掉秒数之后那个四帧轮转心跳
+  （实物照片上会被看成脏点或乱码）；学习进度挪到第 6 页中间 5 格。定版尺寸
+  `Code=22644 / RO=6544 / RW=276 / ZI=17988`，烧录映像 **29464 B**，hex md5
+  `013b3127adf9fff862340accbf3984b2`。当前板上跑的就是这一版
+  （见 [`docs/图示/实物照_OLED运行显示.jpg`](docs/图示/实物照_OLED运行显示.jpg)，底条 `4988 s` 之后是空的）。
 - **若你的板子上还是旧固件**，R 会显示成 `1.7` 这种丢十位的值，需重新烧录
   `firmware_stm32/OBJ_firmware/STM32F407_Template.hex`。
   详细成因与 A/B 对照见
@@ -226,8 +239,9 @@ NanoEdge AI 模型本身占 **RAM 3668 B / Flash 3108 B**。库端 `learning_min
 （Edit → Encoding → UTF-8 without signature），GitHub 网页也不会乱码。
 行尾按文件原样保留，`.gitattributes` 已对 `*.c` `*.h` `*.s` `*.ino` `*.cpp` 声明 `-text`，
 克隆下来不会被 `core.autocrlf` 改写。UTF-8 与原 GBK 版编译产物**逐字节相同**
-（`Code=22296 RO-data=6548 RW-data=264 ZI-data=17992`，0 Error 0 Warning，
-hex md5 `d5483850d3cb58adc392afc50b4f6399`）。详见
+（该次对照实验用的是 10-22 白天那一版：`Code=22296 RO-data=6548 RW-data=264 ZI-data=17992`，
+0 Error 0 Warning，hex md5 `d5483850d3cb58adc392afc50b4f6399`；当前定版尺寸见上面的
+「编译产物尺寸」表）。详见
 [`firmware_stm32/README_源码目录.md`](firmware_stm32/README_源码目录.md) 的「源码编码与行尾」。
 
 **烧录注意**：J-Link 脚本必须带 `device STM32F407ZG`，不带时 erase 会被静默拒绝
