@@ -38,7 +38,7 @@
 |---|---|---|
 | 文件编码 | **UTF-8（无 BOM）** | Keil MDK 5.14 的 uVision 内置「Encode in UTF-8 without signature」选项，UTF-8 中文注释在编辑器里正常显示；同时 GitHub 网页按 UTF-8 渲染，源码在网页上不会乱码 |
 | 行尾 | **原样保留**（部分文件 CRLF、部分 LF） | 与实际编译验证过的工程逐字节一致；`.gitattributes` 已对 `*.c` `*.h` `*.s` `*.ino` `*.cpp` 声明 `-text`，保证克隆下来行尾不被 `core.autocrlf` 改写 |
-| 编译验证 | ARMCC 5.05 对 UTF-8 源文件编译结果与 GBK 版**逐字节相同** | `Code=22288 RO-data=6548 RW-data=264 ZI-data=17992`，0 Error 0 Warning，hex md5 `eb7e23174ca6873ddb9aa1962eccae4e` |
+| 编译验证 | ARMCC 5.05 对 UTF-8 源文件编译结果与 GBK 版**逐字节相同** | `Code=22296 RO-data=6548 RW-data=264 ZI-data=17992`，0 Error 0 Warning，hex md5 `d5483850d3cb58adc392afc50b4f6399` |
 
 > 早期版本本仓库的 `.c/.h` 用的是 GBK 编码。ARMCC 5 虽能正常编译，但 GitHub 网页
 > 按 UTF-8 渲染 GBK 字节，`main.c` 会出现 7613 个替换字符（乱码）。因此统一改为
@@ -49,10 +49,10 @@
 - **编译**：Keil 打开 `USER/STM32F407_Template.uvprojx` 直接 Build；命令行用
   `UV4.exe -b USER\STM32F407_Template.uvprojx -j0 -o 日志绝对路径`
   （`-o` 只给相对路径时不会生成日志文件）。
-  当前构建尺寸：`Code=22288 RO-data=6548 RW-data=264 ZI-data=17992`，0 Error 0 Warning，
+  当前构建尺寸：`Code=22296 RO-data=6548 RW-data=264 ZI-data=17992`，0 Error 0 Warning，
   完整日志见 `USER/build_final_20261021.log`。
 - **烧录**：直接用 `OBJ_firmware/STM32F407_Template.hex`
-  （md5 `eb7e23174ca6873ddb9aa1962eccae4e`，与上面这组尺寸是同一次构建的产物）。
+  （md5 `d5483850d3cb58adc392afc50b4f6399`，与上面这组尺寸是同一次构建的产物）。
   配套脚本 `OBJ_firmware/burn_final_20261021.jlink` 用的是**相对路径**，
   需 `cd` 到 `OBJ_firmware/` 目录再执行：
   `E:\Keil_v5\ARM\Segger\JLink.exe -CommanderScript burn_final_20261021.jlink`。
@@ -63,7 +63,7 @@
   - 若报 `Programming failed`，多半是上一轮 J-Link 会话残留，`h` 之后补一次 `r` 即过。
 - **尺寸证据**：`OBJ_firmware/STM32F407_Template.map` 是完整的 armlink listing
   （含 Image Symbol Table / Global Symbols / Memory Map / Image component sizes 四段），
-  `Total RO Size = 28836 (28.16 kB)`、`Total RW Size = 18256 (17.83 kB)`，
+  `Total RO Size = 28844 (28.17 kB)`、`Total RW Size = 18256 (17.83 kB)`，
   与 hex 同一次链接产出。源码改动后再编译，`.map` 里的符号地址会整体平移，
   用 J-Link 读内部变量前需重新取地址。
 

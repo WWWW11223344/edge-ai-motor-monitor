@@ -193,7 +193,19 @@ void UI_Update(const UI_Data *d)
              *      会把它顶到 2.1~2.5，稳定运行只有 0.3~0.6，
              *      而且它不随档位平移，是真正的判定量（阈值 1.0）。
              * 两者单位都是 rpm/V，所以右边的单位标签固定不用重画；
-             * 标签在 "R " 与 "dR" 之间切换，退回时多画一个空格擦掉 d。 */
+             * 标签在 "R " 与 "dR" 之间切换，退回时多画一个空格擦掉 d。
+             *
+             * 【2026-10-22 修正显示缺陷】
+             * 1) R 行 int_len 原来传 1U，但 R = rpm/vbat 实测 11.7~23.6 是两位数，
+             *    而 OLED_ShowFloat 整数部分是按位取模 ((integer/p)%10) 输出的，
+             *    只给 1 位就等于把十位整位丢掉：11.79 会显示成 "1.7"、13.08 显示成 "3.0"，
+             *    数值完全错。改为 2U 后显示 "11.7" / "13.0"，与实测值一致。
+             * 2) 修正后 R 正常态是 4 字符（"11.7"），dR 正常态也是 4 字符（"2.52"），
+             *    之前 R 只有 3 字符，dR 切回 R 时会残留 dR 的尾巴拼成 "3.48-" 这类脏串。
+             * 3) dR 无效态由 "--.--"（5 字符 = 40 px，终点正好 x=80 贴住单位首列）
+             *    改为 "----"（4 字符 = 32 px，终点 x=72），与正常态等长且不压单位。
+             * 4) 现在 R 行与 dR 行的正常态/无效态全部是 4 字符 = 32 px，
+             *    终点 x=72 < 单位起点 R_UNIT_X(80)，四种组合互切均无残留、不压单位。 */
             if (((d->uptime_s / 2U) & 1U) != 0U)  /* 奇数 2 s 段：显示跳变幅度 */
             {
                 OLED_ShowString(BIG_LABEL_X, ROW_R, "dR", FONT_BIG);  /* 标签 dR */
@@ -205,7 +217,7 @@ void UI_Update(const UI_Data *d)
                 }
                 else  /* 窗口没满，先不给数 */
                 {
-                    OLED_ShowString(BIG_VALUE_X, ROW_R, "--.--", FONT_BIG);  /* 显示 --.-- */
+                    OLED_ShowString(BIG_VALUE_X, ROW_R, "----", FONT_BIG);  /* 显示 ----，与正常态等长 */
                 }
             }
             else  /* 偶数 2 s 段：显示 R */
@@ -213,7 +225,7 @@ void UI_Update(const UI_Data *d)
                 OLED_ShowString(BIG_LABEL_X, ROW_R, "R ", FONT_BIG);  /* 标签 R，多一个空格擦掉上次的 d */
                 if (d->r_valid != 0U)  /* R 有效，电机在转且电压通路正常 */
                 {
-                    OLED_ShowFloat(BIG_VALUE_X, ROW_R, d->r_ratio, 1U, 1U, FONT_BIG);  /* 输出 xx.x */
+                    OLED_ShowFloat(BIG_VALUE_X, ROW_R, d->r_ratio, 2U, 1U, FONT_BIG);  /* 输出 xx.x */
                 }
                 else  /* R 无效 */
                 {

@@ -19,7 +19,7 @@
 | 报警判定 | 相似度 < **32** 连续 2 窗；并联 dR > **1.0 rpm/V** 连续 2 窗 |
 | 检测时延 | 捏轴后约 **3~3.5 s** 报警，松开后自动解除 |
 | 支持档位 | 58%（约 140 rpm）与 64%（约 245~260 rpm）两档通用 |
-| 固件尺寸 | Code 22288 / RO 6548 / RW 264 / ZI 17992 B |
+| 固件尺寸 | Code 22296 / RO 6548 / RW 264 / ZI 17992 B |
 
 ## 系统组成
 
@@ -132,7 +132,7 @@ Keil 全量重建，0 Error 0 Warning：
 
 | 段 | 大小 |
 |---|---|
-| Code | 22288 B |
+| Code | 22296 B |
 | RO-data | 6548 B |
 | RW-data | 264 B |
 | ZI-data | 17992 B |
@@ -200,8 +200,8 @@ NanoEdge AI 模型本身占 **RAM 3668 B / Flash 3108 B**。库端 `learning_min
 （Edit → Encoding → UTF-8 without signature），GitHub 网页也不会乱码。
 行尾按文件原样保留，`.gitattributes` 已对 `*.c` `*.h` `*.s` `*.ino` `*.cpp` 声明 `-text`，
 克隆下来不会被 `core.autocrlf` 改写。UTF-8 与原 GBK 版编译产物**逐字节相同**
-（`Code=22288 RO-data=6548 RW-data=264 ZI-data=17992`，0 Error 0 Warning，
-hex md5 `eb7e23174ca6873ddb9aa1962eccae4e`）。详见
+（`Code=22296 RO-data=6548 RW-data=264 ZI-data=17992`，0 Error 0 Warning，
+hex md5 `d5483850d3cb58adc392afc50b4f6399`）。详见
 [`firmware_stm32/README_源码目录.md`](firmware_stm32/README_源码目录.md) 的「源码编码与行尾」。
 
 **烧录注意**：J-Link 脚本必须带 `device STM32F407ZG`，不带时 erase 会被静默拒绝

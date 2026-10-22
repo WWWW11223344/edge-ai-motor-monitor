@@ -24,6 +24,11 @@ OBJ/*.d
 __pycache__/
 .tmp_view/
 
+# 例外：OBJ_firmware/ 下的 map 是最终固件链接产物的证据文件
+# （含 Image Symbol Table / Global Symbols / Memory Map / Image component sizes），
+# README 里引用了它，必须入库，不能被上面的 *.map 规则挡掉
+!firmware_stm32/OBJ_firmware/*.map
+
 # 系统文件
 Thumbs.db
 .DS_Store
