@@ -2,15 +2,15 @@
   Copyright (C), 2026, 汪贤云
   FileName:    ai_monitor.c
   Author:      汪贤云
-  Version:     2.0
-  Date:        2026-10-19
+  Version:     3.0
+  Date:        2026-10-21
   Description: 板上 AI 模块：现场学习与异常检测
-               （NanoEdge AI Studio Library ID 6ad6053cc9f44b85284837b0 / 模型族 ZSM）。
-               数据流：main.c 主循环每 100 ms 产生一个 R 点
-               （R = 转速 / 母线电压），每产生一个点调一次本模块；
-               窗口满 32 点（约 3.2 s）后把整个窗直接喂给模型；
-               学习阶段连续 64 个窗（约 6.4 s），之后进入检测，
-               输出相似度（0~100），连续 2 个窗低于阈值即置报警。
+               （NanoEdge AI Studio Library ID 6ad8b466f4c74310b9bc146f / 模型族 ICM）。
+               数据流：main.c 主循环每 100 ms 推一个 q = 转速 / 母线电压，
+               feature_r 把它压成 8 点滚动峰峰值后调一次本模块；
+               峰峰值序列攒满 32 点（约 3.9 s）后整窗喂给 ICM 模型；
+               库自带预训练知识（learning_min_lines = 368 已在 PC 端消化），
+               上电 init(true) 后直接进入检测，输出 0~100 的相似度。
   Function List:
     1. ai_monitor_init()             初始化模型库
     2. ai_monitor_tick()             每个 R 点调一次（核心）
@@ -22,6 +22,9 @@
     汪贤云     2026-10-19    2.0         换用单变量 R 的 32 点窗模型库（ZSM），
                                                 去掉 64 帧窗口、19 维特征、四组拼接的旧流程，
                                                 ai_monitor_feed_frame() 改为 ai_monitor_tick()
+    汪贤云     2026-10-21    3.0         换用 68 号 ICM 库，输入改为 q 的 8 点滚动峰峰值
+                                                （dR 序列）；改走上电即检测 + 增量补学路线
+                                                取代「学满 64 窗再转检测」；阈值与判据不变
 ***********************************************************/
 /* 【模型与输入】
  * 输入 1 个样本 x 32 点 = 32 个 float，这 32 点是 feature_r 算出来的

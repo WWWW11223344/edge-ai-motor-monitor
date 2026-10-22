@@ -22,6 +22,11 @@
  *    current_mA / accel_x_mg / accel_y_mg / accel_z_mg / rpm_x10 / battery_mV   （6 个测量值字段名）
  *                       加速度三个字段（accel_*_mg）自 2026-10-19 起恒为 null，网页已不再展示
  *                       6 个测量值（注意单位：毫安、毫克、转速x10、毫伏）
+ *    dr_x1000            窗内 rpm/V 的绝对峰峰值（dR）放大 1000 倍的整数；
+ *                        与板上 OLED 上轮显的「dR」同一口径，阈值 1000 即 1.0 rpm/V。
+ *                        由 D1 侧用最近 32 帧就地算出 —— 42 字节帧里没有它的槽位，
+ *                        而改协议会让 STM32 固件与本页数据同时对不上，不划算。
+ *                        窗口未满 / 死区 / 转速或电压无效时输出 null（绝不输出 0）。
  *    ai_phase / ai_alarm  板上 AI 阶段 / 是否报警（0/1）
  *    frames / rejected  累计收下的帧数 / 被拒收的帧数
  *    reject_*          按原因分类的拒收计数（判断「是谁把数据弄丢了」的关键）
@@ -33,10 +38,13 @@
 #include <stdio.h>
 #include <string.h> /* memcpy 声明，用来把 "null" 写进输出缓冲 */
 
+/* dR 就地计算的实现放在文件末尾，这里先声明（本文件内私有） */
+static bool dr_from_history(const M2History *history, long *drX1000);   /* 前向声明：算窗内 rpm/V 峰峰值并放大 1000 倍 */
+
 /* 【整个函数只在这一个地方被调用：主循环里的 HTTP 处理器】
  * 因为调用点唯一，格式化过程中接收状态不会被别的代码改动，
  * 所以这里读到的是一份「静止的快照」，不用加锁。 */
-size_t status_json_with_diagnostics(const M2Receiver *receiver, uint32_t nowMs,
+size_t status_json_with_diagnostics(const M2Receiver *receiver, const M2History *history, uint32_t nowMs,
     uint32_t uartOverflows, uint32_t uartBacklogEvents, uint32_t uartBacklogBytes,
     uint32_t externalDiscards, char *buffer, size_t capacity) /* 续行：外部丢弃计数 / 输出缓冲指针 / 缓冲容量 */
 {
@@ -56,7 +64,20 @@ size_t status_json_with_diagnostics(const M2Receiver *receiver, uint32_t nowMs,
     char levelText[5] = "null";   /* 档位文本，默认 null */
     char dutyText[5] = "null";   /* 占空比文本，默认 null */
     char aiPhaseText[12] = "null";   /* AI 阶段文本，默认 null */
+    char drText[14] = "null";   /* dR（x1000）文本，默认 null */
+    char uptimeText[14] = "null";   /* 板上运行毫秒数，默认 null（页面折成秒，与 OLED 的 T:xxx s 对齐） */
     int aiAlarm = 0;   /* 报警标志，默认 0 */
+/* 【dR】只有链路 live 时才可能算出来：
+ *   非 live 时历史里存的是过期帧，拿它算峰峰值等于拿旧数据编新结论。
+ *   算不出来（窗口未满 / 死区 / 缺路）就保持 null，页面显示「--」。 */
+    if (live) {
+        long drX1000 = 0L;   /* dR 放大 1000 倍后的整数 */
+        if (dr_from_history(history, &drX1000)) {   /* 窗口满足且各路都有效 */
+            snprintf(drText, sizeof(drText), "%ld", drX1000);   /* 输出整数，页面再除 1000 */
+        }
+        snprintf(uptimeText, sizeof(uptimeText), "%lu", /* 板上运行毫秒数 */
+                 (unsigned long)(uint32_t)receiver->latest.uptimeMs);
+    }
 /* 【数据年龄】有帧才输出年龄（毫秒），没有帧就保持 null。
  * 页面用它显示「数据年龄 x.x 秒」，一眼能看出数据是不是卡住了。 */
     if (receiver->hasFrame) {
@@ -94,6 +115,8 @@ size_t status_json_with_diagnostics(const M2Receiver *receiver, uint32_t nowMs,
     const int length = snprintf(buffer, capacity,
         "{\"version\":\"%s\",\"link\":\"%s\",\"age_ms\":%s,\"level\":%s,\"duty\":%s,"   /* 版本 / 链路状态 / 数据年龄 / 档位 / 占空比 */
         "\"feature_valid_mask\":%u,\"current_mA\":%s,\"accel_x_mg\":%s,\"accel_y_mg\":%s,\"accel_z_mg\":%s,\"rpm_x10\":%s,\"battery_mV\":%s,"   /* 有效位掩码 + 6 个测量值 */
+        "\"dr_x1000\":%s,"   /* 窗内 rpm/V 峰峰值 dR（x1000），与板上 OLED 轮显的 dR 同口径 */
+        "\"uptime_ms\":%s,"   /* 板上运行毫秒数（页面折成秒，对齐 OLED 的 T:xxx s） */
         "\"ai_phase\":\"%s\",\"ai_alarm\":%d,"   /* AI 阶段与报警标志 */
         "\"frames\":%lu,\"rejected\":%lu,\"reject_version\":%lu,\"reject_length\":%lu,"   /* 收帧数、总拒收数与前两类拒收 */
         "\"reject_format\":%lu,\"reject_crc\":%lu,\"reject_range\":%lu,\"reject_other\":%lu,"   /* 格式 / CRC / 范围 / 其它四类拒收 */
@@ -102,6 +125,8 @@ size_t status_json_with_diagnostics(const M2Receiver *receiver, uint32_t nowMs,
         TELEMETRY_VERSION, link, age, levelText, dutyText,   /* 对应参数：版本、链路、年龄、档位、占空比 */
         live ? (unsigned)receiver->latest.validMask : 0U,   /* 有效位掩码：非 live 时给 0 */
         values[0], values[1], values[2], values[3], values[4], values[5],   /* 6 个测量值文本 */
+        drText,   /* dR（x1000），无效时为 null */
+        uptimeText,   /* 板上运行毫秒数 */
         aiPhaseText, aiAlarm,   /* AI 阶段文本与报警标志 */
         (unsigned long)receiver->accepted, (unsigned long)receiver->rejected,   /* 累计接收 / 累计拒收 */
         (unsigned long)receiver->rejectVersion, (unsigned long)receiver->rejectLength,   /* 拒收分类：版本 / 长度 */
@@ -117,9 +142,78 @@ size_t status_json_with_diagnostics(const M2Receiver *receiver, uint32_t nowMs,
     return (size_t)length;   /* 返回实际写入的字节数 */
 }
 
+/* --------------------------------------------------------------------------
+ *  dR 就地计算：回看最近 32 帧，算 q = rpm / vbat 的峰峰值（放大 1000 倍取整）
+ *
+ *  【为什么在 D1 侧算，而不是让 STM32 发过来】
+ *    42 字节帧的 6 个槽位里，加速度三位（MPU6050 摘除后）虽然空着，
+ *    但要启用它们就得同时改 STM32 固件、协议版本与两侧解析；
+ *    而 D1 本来就有 256 帧的环形缓冲（约 25 秒），窗口所需的 32 帧唾手可得。
+ *    在接收端算，只动 ESP8266 一侧，STM32 那边一个字节都不用改。
+ *
+ *  【与板上口径必须一致的三件事】
+ *    ① 窗口长度 32 帧（板上 FEATURE_R_WINDOW = 32，100 ms 一点，共 3.2 s）
+ *    ② q = rpm / vbat 在原始空间算，不做膝点归一化 ——
+ *       板上 s_rippleAbs 的推导式化简后正好等于 q 的峰峰值（窗内 duty 恒定）
+ *    ③ duty <= 50 落在起动死区，R 无意义，整窗判无效（与板上丢窗规则一致）
+ *
+ *  【返回 false 的每一种情况都输出 null，不输出 0】
+ *    窗口没攒满、占空比在死区、转速或电压任一路无效、电压为 0（不能做分母）。
+ * -------------------------------------------------------------------------- */
+static bool dr_from_history(const M2History *history, long *drX1000)   /* 入参：帧历史；出参：dR x1000 */
+{
+    bool haveValue = false;   /* 是否已经取到第一个有效点 */
+    float qmin = 0.0f;   /* 窗内 q 的最小值 */
+    float qmax = 0.0f;   /* 窗内 q 的最大值 */
+    float peak;   /* 峰峰值 */
+    if (history == NULL || drX1000 == NULL) {   /* 入参检查 */
+        return false;   /* 没有历史或没有出参缓冲：判无效 */
+    }
+    if (history->count < STATUS_DR_WINDOW) {   /* 窗口还没攒满 */
+        return false;   /* 与板上一致：未满窗不给结论，避免把攒窗阶段当异常 */
+    }
+    /* 环形缓冲里「最近 32 帧」的起点：head 指向下一个写入位，往前回退 32 个 */
+    const size_t start = (history->head + M2_HISTORY_CAPACITY - STATUS_DR_WINDOW) % M2_HISTORY_CAPACITY;
+    for (size_t k = 0U; k < STATUS_DR_WINDOW; ++k) {   /* 从最旧到最新逐个检查 */
+        const M2Frame *frame = &history->frames[(start + k) % M2_HISTORY_CAPACITY];   /* 取这一帧 */
+        if (frame->duty <= STATUS_DR_DUTY_MIN) {   /* 占空比落在起动死区 */
+            return false;   /* R 与 dR 都没有物理意义，整窗作废 */
+        }
+        if ((frame->validMask & M2_VALID_SPEED) == 0U) {   /* 转速无效 */
+            return false;   /* 缺一路就整窗作废，不用缺帧拼窗口 */
+        }
+        if ((frame->validMask & M2_VALID_BATTERY) == 0U) {   /* 母线电压无效 */
+            return false;   /* 同上 */
+        }
+        if (frame->value[5] <= 0) {   /* 母线电压为 0 或负 */
+            return false;   /* 不能做分母 */
+        }
+        /* q = (rpm_x10 / 10) / (mV / 1000) = rpm_x10 * 100 / mV */
+        const float q = ((float)frame->value[4] * 100.0f) / (float)frame->value[5];
+        if (!haveValue) {   /* 第一个有效点：同时当最小值与最大值 */
+            qmin = q;
+            qmax = q;
+            haveValue = true;
+        } else {   /* 之后的点：各自更新极值 */
+            if (q < qmin) { qmin = q; }
+            if (q > qmax) { qmax = q; }
+        }
+    }
+    if (!haveValue) {   /* 理论上到不了这里（窗口已满且每帧都过了检查） */
+        return false;   /* 保险起见仍判无效 */
+    }
+    peak = qmax - qmin;   /* 峰峰值 */
+    if (peak < 0.0f) {   /* 浮点异常保护 */
+        return false;   /* 负值无意义 */
+    }
+    *drX1000 = (long)(peak * 1000.0f + 0.5f);   /* 放大 1000 倍并四舍五入成整数 */
+    return true;   /* dR 可用 */
+}
+
 /* 兼容用的简化入口：不带串口诊断计数的版本（内部就是传 0 给诊断参数）。
- * 老的测试代码用它，正式固件走的是上面那个带诊断的版本。 */
+ * 老的测试代码用它，正式固件走的是上面那个带诊断的版本。
+ * 这里传 NULL 历史：dR 字段输出 null，老调用方的行为完全不变。 */
 size_t status_json(const M2Receiver *receiver, uint32_t nowMs, char *buffer, size_t capacity)
 {
-    return status_json_with_diagnostics(receiver, nowMs, 0U, 0U, 0U, 0U, buffer, capacity); /* 4 个串口诊断计数全部传 0，与旧版行为一致 */
+    return status_json_with_diagnostics(receiver, NULL, nowMs, 0U, 0U, 0U, 0U, buffer, capacity); /* 历史传 NULL + 4 个串口诊断计数传 0 */
 }

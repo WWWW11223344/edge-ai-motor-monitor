@@ -286,9 +286,13 @@ static void service_network()
 // JSON 拼装函数与实际收帧器共用同一套主机侧测试用例。
 static void send_status()
 {
-    char body[768]; /* JSON 输出缓冲；放栈上但只有 768 字节，安全 */
+    /* 2026-10-21：JSON 新增 dr_x1000 与 uptime_ms 两个字段，缓冲从 768 提到 900。
+     * 拼不下时 status_json 会返回 0 并回 500，宁可多留余量也不要半截 JSON。 */
+    char body[900]; /* JSON 输出缓冲；放栈上且不到 1 KB，安全 */
     g_server.sendHeader("Cache-Control", "no-store"); /* 禁止缓存，保证拿到的是此刻状态 */
-    if (status_json_with_diagnostics(&g_receiver, millis(), g_uartOverflows, /* 拼 JSON：收帧器 + 当前时间 + 4 个诊断计数 */
+    /* 第二个参数传 &g_history：dR 要回看最近 32 帧，就地算窗内 rpm/V 的峰峰值
+     * （与板上 OLED 轮显的 dR 同口径）。传 NULL 则该字段输出 null。 */
+    if (status_json_with_diagnostics(&g_receiver, &g_history, millis(), g_uartOverflows, /* 拼 JSON：收帧器 + 帧历史 + 当前时间 + 4 个诊断计数 */
             g_uartBacklogEvents, g_uartBacklogBytes, g_externalDiscards, /* 诊断计数：积压次数 / 积压字节 / 丢弃次数 */
             body, sizeof(body)) == 0U) { /* 返回 0 表示缓冲不够拼不下，下面回 500 */
         g_server.send(500, "text/plain", "Status unavailable"); /* 拼装失败，明确告诉调用方 */
