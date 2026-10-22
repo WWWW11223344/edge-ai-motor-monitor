@@ -2,7 +2,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1700" height="1194" viewBox="0 0 1700 1194">
 <rect x="0" y="0" width="1700" height="1194" fill="#FFFFFF"/>
 <text x="40.0" y="52.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="27.0" fill="#2F5D8A" text-anchor="start" font-weight="bold">基于边缘 AI 的电机智能状态监控系统 · 硬件连接图</text>
-<text x="1660.0" y="52.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="13.0" fill="#78868F" text-anchor="end" font-weight="normal">版本 V3.0 · 2026-10-19 · 按驱动源码逐脚核对，ACS712 位置已修正</text>
+<text x="1660.0" y="52.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="13.0" fill="#78868F" text-anchor="end" font-weight="normal">版本 V3.1 · 2026-10-22 · 按驱动源码逐脚核对；特征窗口改为滚动峰峰值</text>
 <line x1="40.0" y1="70.0" x2="1660.0" y2="70.0" stroke="#CBD5E1" stroke-width="1.4"/>
 <rect x="40.0" y="86.0" width="1620.0" height="266.0" rx="10.0" ry="10.0" fill="none" stroke="#CBD5E1" stroke-width="1.3" stroke-dasharray="7 5"/>
 <text x="54.0" y="107.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="12.0" fill="#78868F" text-anchor="start" font-weight="bold">① 功率回路（12 V 级，粗线为能量流向）</text>
@@ -92,15 +92,15 @@
 <text x="894.0" y="677.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="11.2" fill="#78868F" text-anchor="start" font-weight="normal">采样与显示时基</text>
 <rect x="600.0" y="728.0" width="260.0" height="96.0" rx="6.0" ry="6.0" fill="#FFFFFF" stroke="#DCE5EF" stroke-width="1.2"/>
 <rect x="600.0" y="732.0" width="4.0" height="88.0" rx="2.0" fill="#3E8E5A" stroke="none" stroke-width="0.0"/>
-<text x="614.0" y="751.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="12.4" fill="#3E8E5A" text-anchor="start" font-weight="bold">feature_r · R 窗口</text>
-<text x="614.0" y="775.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="11.2" fill="#78868F" text-anchor="start" font-weight="normal">R = 转速 / 母线电压</text>
-<text x="614.0" y="793.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="11.2" fill="#78868F" text-anchor="start" font-weight="normal">32 点 × 100 ms</text>
+<text x="614.0" y="751.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="12.4" fill="#3E8E5A" text-anchor="start" font-weight="bold">feature_r · 峰峰值窗</text>
+<text x="614.0" y="775.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="11.2" fill="#78868F" text-anchor="start" font-weight="normal">q = 转速 / 母线电压</text>
+<text x="614.0" y="793.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="11.2" fill="#78868F" text-anchor="start" font-weight="normal">8 点峰峰值 × 32</text>
 <rect x="880.0" y="728.0" width="250.0" height="96.0" rx="6.0" ry="6.0" fill="#FFFFFF" stroke="#DCE5EF" stroke-width="1.2"/>
 <rect x="880.0" y="732.0" width="4.0" height="88.0" rx="2.0" fill="#3E8E5A" stroke="none" stroke-width="0.0"/>
 <text x="894.0" y="751.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="12.4" fill="#3E8E5A" text-anchor="start" font-weight="bold">ai_monitor · 2.0</text>
-<text x="894.0" y="775.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="11.2" fill="#78868F" text-anchor="start" font-weight="normal">ZSM 相似度 0 ~ 100</text>
-<text x="894.0" y="793.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="11.2" fill="#78868F" text-anchor="start" font-weight="normal">学习 64 窗 · 阈值 32</text>
-<text x="870.0" y="852.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="12.0" fill="#41505F" text-anchor="middle" font-weight="bold">AI 的唯一输入是 R = 转速 / 母线电压；</text>
+<text x="894.0" y="775.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="11.2" fill="#78868F" text-anchor="start" font-weight="normal">ICM 相似度 0 ~ 100</text>
+<text x="894.0" y="793.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="11.2" fill="#78868F" text-anchor="start" font-weight="normal">阈值 32 · 连击 2 窗</text>
+<text x="870.0" y="852.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="12.0" fill="#41505F" text-anchor="middle" font-weight="bold">AI 的唯一输入是 rpm/V 的滚动峰峰值；</text>
 <text x="870.0" y="872.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="12.0" fill="#41505F" text-anchor="middle" font-weight="bold">电流只作辅助观测量，不参与判定</text>
 <text x="870.0" y="902.0" font-family="'Microsoft YaHei','Microsoft YaHei UI','Segoe UI',sans-serif" font-size="11.0" fill="#78868F" text-anchor="middle" font-weight="normal">I2C1 PB8/PB9 · USART1 PA9/PA10 · USART3 PB10</text>
 <path d="M 960.0,328.0 L 960.0,420.0" fill="none" stroke="#C8873A" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round"/>
