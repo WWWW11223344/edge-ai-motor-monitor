@@ -1,15 +1,48 @@
-# 行尾策略：脚本、数据、源码一律原样保存，其余交给编辑器
-# J-Link Commander 脚本若被转成 CRLF，\r 会被吃进命令，导致烧录静默失败
-*.jlink -text
-*.csv   -text
-*.bin   -text
-*.a     -text
-*.hex   -text
-# Keil 源码：原行尾必须原样入库
+# 行尾策略：仓库内的文本文件一律「原样保存」，不做任何行尾转换
+#
+# 为什么必须这样：
+#  - core.autocrlf=true 会把入库的 CRLF 归一成 LF。克隆下来行尾与本地 Keil 工程
+#    不一致，Keil MDK 5.14 是 Windows 原生编辑器，行尾变化会影响编辑器行为与
+#    「与实际编译验证过的工程逐字节一致」这一承诺。
+#  - J-Link Commander 脚本若被转成 CRLF，\r 会被吃进命令，导致烧录静默失败。
+#
+# 注意：.gitattributes 的规则对「添加前已入库」的文件不生效，
+#      改完规则后必须 git rm --cached + git add 重新入库才生效。
+
+# --- Keil 源码：原行尾必须原样入库 ---
 #  - CRLF 是 Windows Keil MDK 5.14 的原生期望，LF 源文件虽能编译但编辑器显示会变
-#  - core.autocrlf=true 会把 CRLF 归一成 LF 入库，克隆下来行尾与工程不一致
+#  - FWLIB / CORE / USER 下的文件行尾本来就混用（CRLF 与 LF 各占一部分），全部原样
 *.c     -text
 *.h     -text
 *.s     -text
 *.ino   -text
 *.cpp   -text
+
+# --- 烧录与链接产物：Keil 生成的文本，必须原样 ---
+#  - .hex 由 Keil 生成，行尾为 CRLF；J-Link 逐行读取
+*.hex   -text
+*.map   -text
+*.log   -text
+*.ini   -text
+*.jlink -text
+
+# --- Keil 工程文件 ---
+*.uvprojx -text
+*.uvoptx  -text
+
+# --- 文档与数据：原样保存，克隆后与本仓库逐字节一致 ---
+*.md   -text
+*.json -text
+*.csv  -text
+*.svg  -text
+*.txt  -text
+
+# --- 二进制：禁止任何行尾/文本处理 ---
+*.bin  binary
+*.a    binary
+*.png  binary
+*.jpg  binary
+
+# --- 本文件自身：也按原样保存，避免规则文件被 autocrlf 改写导致规则失效 ---
+.gitattributes -text
+.gitignore     -text
