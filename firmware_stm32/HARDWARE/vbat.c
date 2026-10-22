@@ -1,311 +1,311 @@
 /************************************************************
-  Copyright (C), 2026, ÍôÏÍÔÆ
+  Copyright (C), 2026, æ±ªè´¤äº‘
   FileName:    vbat.c
-  Author:      ÍôÏÍÔÆ
+  Author:      æ±ªè´¤äº‘
   Version:     1.0
   Date:        2026-09-22
-  Description: Ä¸ÏßµçÑ¹²É¼¯ÊµÏÖ¡£D153C Çı¶¯°å½«Ä¸ÏßµçÑ¹¾­ 10k+1k ·ÖÑ¹£¨1/11£©ºó
-               ÓÉ H2 µÚ 5 ½ÅÒı³ö£¬½ÓÖÁ PA4£¨ADC1_IN4£©¡£
-               »»Ëã£ºVM = raw / 4095 x 3.3V x 11£»Á¿³ÌÉÏÏŞ 36.3V¡¢·Ö±æÂÊÔ¼ 8.9mV¡£
-               ²É¼¯²ÉÓÃÈí¼ş´¥·¢ + ÂÖÑ¯ EOC µÄ·½Ê½£¬²»ÓÃ DMA ÓëÖĞ¶Ï£¨8 ´Î×ª»»²»×ã 200us£©¡£
-               ±¾ÎÄ¼şÍ¬Ê±Ìá¹© ADC1 Í¨ÓÃµ¥Í¨µÀ¶ÁÈ¡½Ó¿Ú£¬¹©µçÁ÷²É¼¯¸´ÓÃ¡£
+  Description: æ¯çº¿ç”µå‹é‡‡é›†å®ç°ã€‚D153C é©±åŠ¨æ¿å°†æ¯çº¿ç”µå‹ç» 10k+1k åˆ†å‹ï¼ˆ1/11ï¼‰å
+               ç”± H2 ç¬¬ 5 è„šå¼•å‡ºï¼Œæ¥è‡³ PA4ï¼ˆADC1_IN4ï¼‰ã€‚
+               æ¢ç®—ï¼šVM = raw / 4095 x 3.3V x 11ï¼›é‡ç¨‹ä¸Šé™ 36.3Vã€åˆ†è¾¨ç‡çº¦ 8.9mVã€‚
+               é‡‡é›†é‡‡ç”¨è½¯ä»¶è§¦å‘ + è½®è¯¢ EOC çš„æ–¹å¼ï¼Œä¸ç”¨ DMA ä¸ä¸­æ–­ï¼ˆ8 æ¬¡è½¬æ¢ä¸è¶³ 200usï¼‰ã€‚
+               æœ¬æ–‡ä»¶åŒæ—¶æä¾› ADC1 é€šç”¨å•é€šé“è¯»å–æ¥å£ï¼Œä¾›ç”µæµé‡‡é›†å¤ç”¨ã€‚
   Function List:
-    1. Vbat_Init()          ³õÊ¼»¯ PA4 Óë ADC1
-    2. Vbat_GetVolt()        È¡Ä¸ÏßµçÑ¹(V)
-    3. Vbat_GetRaw()         È¡Ô­Ê¼ ADC Öµ
-    4. Vbat_IsValid()        ²éÑ¯Êı¾İÊÇ·ñ¿ÉĞÅ
-    5. ADC1_ReadChannel()    ADC1 Í¨ÓÃµ¥Í¨µÀ¶ÁÈ¡
-    6. ADC1_LastReadOk()     ²éÑ¯×î½üÒ»´Î×ª»»½á¹û
+    1. Vbat_Init()          åˆå§‹åŒ– PA4 ä¸ ADC1
+    2. Vbat_GetVolt()        å–æ¯çº¿ç”µå‹(V)
+    3. Vbat_GetRaw()         å–åŸå§‹ ADC å€¼
+    4. Vbat_IsValid()        æŸ¥è¯¢æ•°æ®æ˜¯å¦å¯ä¿¡
+    5. ADC1_ReadChannel()    ADC1 é€šç”¨å•é€šé“è¯»å–
+    6. ADC1_LastReadOk()     æŸ¥è¯¢æœ€è¿‘ä¸€æ¬¡è½¬æ¢ç»“æœ
   History:
     <author>   <time>      <version>   <desc>
-    ÍôÏÍÔÆ     2026-10-16    1.0         ´´½¨ÎÄ¼ş²¢°´»ªÎª¹æ·¶²¹³ä×¢ÊÍ
+    æ±ªè´¤äº‘     2026-10-16    1.0         åˆ›å»ºæ–‡ä»¶å¹¶æŒ‰åä¸ºè§„èŒƒè¡¥å……æ³¨é‡Š
 ***********************************************************/
 
 #include "vbat.h"
-#include "Systick.h"  /* Delay_ms() ĞèÒª */
+#include "Systick.h"  /* Delay_ms() éœ€è¦ */
 
-#define ADC1_CONVERT_TIMEOUT    100000UL  /* EOC ÂÖÑ¯´ÎÊıÉÏÏŞ£¬Ô¼¼¸Ê®ºÁÃëÁ¿¼¶ */
-/* ·ÖÑ¹µçÂ·½ÓºÃÊ±£¬¶ÁÊıÓ¦ÂäÔÚ 4~16V ¶ÔÓ¦ÂëÖµµÄºÏÀíÇø¼äÄÚ¡£ */
+#define ADC1_CONVERT_TIMEOUT    100000UL  /* EOC è½®è¯¢æ¬¡æ•°ä¸Šé™ï¼Œçº¦å‡ åæ¯«ç§’é‡çº§ */
+/* åˆ†å‹ç”µè·¯æ¥å¥½æ—¶ï¼Œè¯»æ•°åº”è½åœ¨ 4~16V å¯¹åº”ç å€¼çš„åˆç†åŒºé—´å†…ã€‚ */
 #define VBAT_PRESENT_MIN_RAW    450U
 #define VBAT_PRESENT_MAX_RAW    1900U
 
-static uint8_t s_adc_last_ok = 0U;  /* ×î½üÒ»´Î ADC ×ª»»ÊÇ·ñ³É¹¦ */
-static uint8_t s_vbat_present = 0U;  /* ·ÖÑ¹µçÂ·ÊÇ·ñÔÚÎ» */
-static uint8_t s_vbat_valid = 0U;  /* Ä¸ÏßµçÑ¹¶ÁÊıÊÇ·ñ¿ÉĞÅ */
+static uint8_t s_adc_last_ok = 0U;  /* æœ€è¿‘ä¸€æ¬¡ ADC è½¬æ¢æ˜¯å¦æˆåŠŸ */
+static uint8_t s_vbat_present = 0U;  /* åˆ†å‹ç”µè·¯æ˜¯å¦åœ¨ä½ */
+static uint8_t s_vbat_valid = 0U;  /* æ¯çº¿ç”µå‹è¯»æ•°æ˜¯å¦å¯ä¿¡ */
 
-static void Vbat_ConfigPin(uint32_t mode, uint32_t pupd);  /* ÅäÖÃ PA4 µÄ¹¤×÷Ä£Ê½ÓëÉÏÏÂÀ­ */
-static uint8_t Vbat_CheckPresent(void);  /* ¼ì²â·ÖÑ¹µçÂ·ÊÇ·ñ½ÓÉÏ */
+static void Vbat_ConfigPin(uint32_t mode, uint32_t pupd);  /* é…ç½® PA4 çš„å·¥ä½œæ¨¡å¼ä¸ä¸Šä¸‹æ‹‰ */
+static uint8_t Vbat_CheckPresent(void);  /* æ£€æµ‹åˆ†å‹ç”µè·¯æ˜¯å¦æ¥ä¸Š */
 
 /* ==========================================================================
- * Ä¸ÏßµçÑ¹²É¼¯µÄÊµÏÖ
+ * æ¯çº¿ç”µå‹é‡‡é›†çš„å®ç°
  * --------------------------------------------------------------------------
- * ¾ÍÈı¼şÊÂ£º°Ñ PA4 Åä³ÉÄ£ÄâÊäÈë -> ´ò¿ª ADC1 -> Èí¼ş´¥·¢¶ÁÒ»´ÎÔÙ³Ë 11¡£
- * Ã»ÓĞÓÃ DMA¡¢Ã»ÓĞÓÃÖĞ¶Ï£ºÖ÷Ñ­»· 200ms ²ÅË¢Ò»´ÎÆÁ£¬8 ´Î×ª»»¼ÓÆğÀ´
- * ²»µ½ 200us£¬Õ¼¿Õ±È¿ÉºöÂÔ£¬Ã»±ØÒª°Ñ¼òµ¥ÎÊÌâ¸´ÔÓ»¯¡£
+ * å°±ä¸‰ä»¶äº‹ï¼šæŠŠ PA4 é…æˆæ¨¡æ‹Ÿè¾“å…¥ -> æ‰“å¼€ ADC1 -> è½¯ä»¶è§¦å‘è¯»ä¸€æ¬¡å†ä¹˜ 11ã€‚
+ * æ²¡æœ‰ç”¨ DMAã€æ²¡æœ‰ç”¨ä¸­æ–­ï¼šä¸»å¾ªç¯ 200ms æ‰åˆ·ä¸€æ¬¡å±ï¼Œ8 æ¬¡è½¬æ¢åŠ èµ·æ¥
+ * ä¸åˆ° 200usï¼Œå ç©ºæ¯”å¯å¿½ç•¥ï¼Œæ²¡å¿…è¦æŠŠç®€å•é—®é¢˜å¤æ‚åŒ–ã€‚
  * ========================================================================== */
 
 /*-----------------------------------------------------------
   Function:      Vbat_Init
-  Description:   ³õÊ¼»¯Ä¸ÏßµçÑ¹²É¼¯£º´ò¿ª GPIOA Óë ADC1 Ê±ÖÓ£¬°Ñ PA4 ÅäÖÃÎªÄ£ÄâÊäÈë£¬
-                 ²¢½« ADC1 ÉèÎª 12 Î»¡¢µ¥´Î×ª»»¡¢480 ÖÜÆÚ²ÉÑùÊ±¼äºóÊ¹ÄÜ¡£
-  Calls:         RCC_AHB1PeriphClockCmd()¡¢RCC_APB2PeriphClockCmd()¡¢Vbat_ConfigPin()¡¢ADC_CommonInit()¡¢ADC_Init()¡¢ADC_Cmd()
-  Called By:     main.c ÉÏµç³õÊ¼»¯£¨Ö»µ÷ÓÃÒ»´Î£©
-  Input:         ÎŞ
-  Output:        ÎŞ
-  Return:        ÎŞ
-  Others:        1) PA4 ±ØĞë¹Ø±ÕÄÚ²¿ÉÏÏÂÀ­£ºÄÚ²¿ÉÏÀ­Ô¼ 40k »áÓë D153C µÄ 1k ·ÖÑ¹µç×è²¢Áª£¬
-                                     Ê¹¶ÁÊıÕûÌåÆ«¸ß£»
-                                  2) ADC Ê±ÖÓ = APB2/4 = 21MHz£¬µÍÓÚÊÖ²áÉÏÏŞ 36MHz£»
-                                  3) ²ÉÑùÊ±¼äÈ¡×îÂıµµ£¬Òò·ÖÑ¹Ô´×è¿¹Ô¼ 0.9k£¬ĞèÒª³ä·Ö³äµç¡£
+  Description:   åˆå§‹åŒ–æ¯çº¿ç”µå‹é‡‡é›†ï¼šæ‰“å¼€ GPIOA ä¸ ADC1 æ—¶é’Ÿï¼ŒæŠŠ PA4 é…ç½®ä¸ºæ¨¡æ‹Ÿè¾“å…¥ï¼Œ
+                 å¹¶å°† ADC1 è®¾ä¸º 12 ä½ã€å•æ¬¡è½¬æ¢ã€480 å‘¨æœŸé‡‡æ ·æ—¶é—´åä½¿èƒ½ã€‚
+  Calls:         RCC_AHB1PeriphClockCmd()ã€RCC_APB2PeriphClockCmd()ã€Vbat_ConfigPin()ã€ADC_CommonInit()ã€ADC_Init()ã€ADC_Cmd()
+  Called By:     main.c ä¸Šç”µåˆå§‹åŒ–ï¼ˆåªè°ƒç”¨ä¸€æ¬¡ï¼‰
+  Input:         æ— 
+  Output:        æ— 
+  Return:        æ— 
+  Others:        1) PA4 å¿…é¡»å…³é—­å†…éƒ¨ä¸Šä¸‹æ‹‰ï¼šå†…éƒ¨ä¸Šæ‹‰çº¦ 40k ä¼šä¸ D153C çš„ 1k åˆ†å‹ç”µé˜»å¹¶è”ï¼Œ
+                                     ä½¿è¯»æ•°æ•´ä½“åé«˜ï¼›
+                                  2) ADC æ—¶é’Ÿ = APB2/4 = 21MHzï¼Œä½äºæ‰‹å†Œä¸Šé™ 36MHzï¼›
+                                  3) é‡‡æ ·æ—¶é—´å–æœ€æ…¢æ¡£ï¼Œå› åˆ†å‹æºé˜»æŠ—çº¦ 0.9kï¼Œéœ€è¦å……åˆ†å……ç”µã€‚
 -----------------------------------------------------------*/
 
 void Vbat_Init(void)
 {
-    ADC_CommonInitTypeDef ADC_CommonInitStructure = {0};  /* ADC ¹«¹²ÅäÖÃ£¬±ØĞëÇåÁã */
-    ADC_InitTypeDef       ADC_InitStructure       = {0};  /* ADC1 Ë½ÓĞÅäÖÃ£¬±ØĞëÇåÁã */
+    ADC_CommonInitTypeDef ADC_CommonInitStructure = {0};  /* ADC å…¬å…±é…ç½®ï¼Œå¿…é¡»æ¸…é›¶ */
+    ADC_InitTypeDef       ADC_InitStructure       = {0};  /* ADC1 ç§æœ‰é…ç½®ï¼Œå¿…é¡»æ¸…é›¶ */
 
-    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);  /* ¿ª GPIOA Ê±ÖÓ */
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1,  ENABLE);  /* ¿ª ADC1 Ê±ÖÓ£¨ADC ¹ÒÔÚ APB2£© */
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);  /* å¼€ GPIOA æ—¶é’Ÿ */
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1,  ENABLE);  /* å¼€ ADC1 æ—¶é’Ÿï¼ˆADC æŒ‚åœ¨ APB2ï¼‰ */
 
-    /* PA4 = ADC1_IN4¡£
-     * Ä£ÄâÊäÈë±ØĞëÏÔÊ½¹ØµôÉÏÏÂÀ­£ºÄÚ²¿ÉÏÀ­Ô¼ 40k£¬»áºÍ D153C µÄ
-     * 1k ·ÖÑ¹µç×è²¢Áª£¬°Ñ¶ÁÊıÕûÌåÀ­¸ßÒ»´ó½Ø¡£ */
+    /* PA4 = ADC1_IN4ã€‚
+     * æ¨¡æ‹Ÿè¾“å…¥å¿…é¡»æ˜¾å¼å…³æ‰ä¸Šä¸‹æ‹‰ï¼šå†…éƒ¨ä¸Šæ‹‰çº¦ 40kï¼Œä¼šå’Œ D153C çš„
+     * 1k åˆ†å‹ç”µé˜»å¹¶è”ï¼ŒæŠŠè¯»æ•°æ•´ä½“æ‹‰é«˜ä¸€å¤§æˆªã€‚ */
     Vbat_ConfigPin(GPIO_Mode_AN, GPIO_PuPd_NOPULL);
 
-    /* ADC Ê±ÖÓ = APB2(84MHz) / 4 = 21MHz£¬µÍÓÚÊı¾İÊÖ²áÉÏÏŞ 36MHz */
+    /* ADC æ—¶é’Ÿ = APB2(84MHz) / 4 = 21MHzï¼Œä½äºæ•°æ®æ‰‹å†Œä¸Šé™ 36MHz */
     ADC_CommonInitStructure.ADC_Mode             = ADC_Mode_Independent;
-    ADC_CommonInitStructure.ADC_Prescaler        = ADC_Prescaler_Div4; /* ADC Ê±ÖÓ 4 ·ÖÆµ -> 21MHz£¬µÍÓÚÊÖ²áÉÏÏŞ 36MHz */
-    ADC_CommonInitStructure.ADC_DMAAccessMode    = ADC_DMAAccessMode_Disabled;  /* µ¥Í¨µÀ²É¼¯£¬²»ÓÃ DMA */
-    ADC_CommonInitStructure.ADC_TwoSamplingDelay = ADC_TwoSamplingDelay_5Cycles;  /* Ë«ÖØ²ÉÑù¼ä¸ô£¬±¾¹¤³ÌÓÃ²»µ½ */
-    ADC_CommonInit(&ADC_CommonInitStructure);  /* Ğ´Èë ADC ¹«¹²¼Ä´æÆ÷ */
+    ADC_CommonInitStructure.ADC_Prescaler        = ADC_Prescaler_Div4; /* ADC æ—¶é’Ÿ 4 åˆ†é¢‘ -> 21MHzï¼Œä½äºæ‰‹å†Œä¸Šé™ 36MHz */
+    ADC_CommonInitStructure.ADC_DMAAccessMode    = ADC_DMAAccessMode_Disabled;  /* å•é€šé“é‡‡é›†ï¼Œä¸ç”¨ DMA */
+    ADC_CommonInitStructure.ADC_TwoSamplingDelay = ADC_TwoSamplingDelay_5Cycles;  /* åŒé‡é‡‡æ ·é—´éš”ï¼Œæœ¬å·¥ç¨‹ç”¨ä¸åˆ° */
+    ADC_CommonInit(&ADC_CommonInitStructure);  /* å†™å…¥ ADC å…¬å…±å¯„å­˜å™¨ */
 
-    ADC_InitStructure.ADC_Resolution           = ADC_Resolution_12b;  /* 12 Î»·Ö±æÂÊ£¨0~4095£© */
-    ADC_InitStructure.ADC_ScanConvMode         = DISABLE;   /* Ö»²ÉÒ»¸öÍ¨µÀ */
-    ADC_InitStructure.ADC_ContinuousConvMode   = DISABLE;   /* ÒªµÄÊ±ºò²Å²ÉÒ»´Î */
+    ADC_InitStructure.ADC_Resolution           = ADC_Resolution_12b;  /* 12 ä½åˆ†è¾¨ç‡ï¼ˆ0~4095ï¼‰ */
+    ADC_InitStructure.ADC_ScanConvMode         = DISABLE;   /* åªé‡‡ä¸€ä¸ªé€šé“ */
+    ADC_InitStructure.ADC_ContinuousConvMode   = DISABLE;   /* è¦çš„æ—¶å€™æ‰é‡‡ä¸€æ¬¡ */
     ADC_InitStructure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_None;
-    ADC_InitStructure.ADC_ExternalTrigConv     = ADC_ExternalTrigConv_T1_CC1; /* Íâ²¿´¥·¢Ô´£¨±ßÑØ´¥·¢ÒÑ¹Ø±Õ£¬Êµ¼Ê×ßÈí¼ş´¥·¢£© */
-    ADC_InitStructure.ADC_DataAlign            = ADC_DataAlign_Right;  /* ½á¹ûÓÒ¶ÔÆë */
-    ADC_InitStructure.ADC_NbrOfConversion      = 1;  /* ¹æÔò×éÖ»ÅÅ 1 ¸öÍ¨µÀ */
-    ADC_Init(ADC1, &ADC_InitStructure);  /* Ğ´Èë ADC1 ÅäÖÃ */
+    ADC_InitStructure.ADC_ExternalTrigConv     = ADC_ExternalTrigConv_T1_CC1; /* å¤–éƒ¨è§¦å‘æºï¼ˆè¾¹æ²¿è§¦å‘å·²å…³é—­ï¼Œå®é™…èµ°è½¯ä»¶è§¦å‘ï¼‰ */
+    ADC_InitStructure.ADC_DataAlign            = ADC_DataAlign_Right;  /* ç»“æœå³å¯¹é½ */
+    ADC_InitStructure.ADC_NbrOfConversion      = 1;  /* è§„åˆ™ç»„åªæ’ 1 ä¸ªé€šé“ */
+    ADC_Init(ADC1, &ADC_InitStructure);  /* å†™å…¥ ADC1 é…ç½® */
 
-    /* ¶ÁÈ¡¶Ë¶ÔÃ¿Ò»´Îµ¥´Î×ª»»¶¼ÒªÂÖÑ¯ EOC£¬ÕâÀï°Ñ¡¸Ã¿¸ö¹æÔòÍ¨µÀ¶¼²úÉú EOC¡¹
-     * Õâ¸öÔ¼¶¨ÏÔÊ½Ğ´³öÀ´£¬¼´±ã×ª»»ĞòÁĞ³¤¶ÈÖ»ÓĞ 1¡£ */
+    /* è¯»å–ç«¯å¯¹æ¯ä¸€æ¬¡å•æ¬¡è½¬æ¢éƒ½è¦è½®è¯¢ EOCï¼Œè¿™é‡ŒæŠŠã€Œæ¯ä¸ªè§„åˆ™é€šé“éƒ½äº§ç”Ÿ EOCã€
+     * è¿™ä¸ªçº¦å®šæ˜¾å¼å†™å‡ºæ¥ï¼Œå³ä¾¿è½¬æ¢åºåˆ—é•¿åº¦åªæœ‰ 1ã€‚ */
     ADC_EOCOnEachRegularChannelCmd(ADC1, ENABLE);
 
-    /* ²ÉÑùÊ±¼äÈ¡×îÂıµÄ 480 ÖÜÆÚ£º·ÖÑ¹Ô´×è¿¹ÓĞ 10k||1k ¡Ö 0.9k£¬
-     * ²ÉÑùµçÈİ³äµÃÂı£¬Ê±¼ä¸ø²»¹»¶ÁÊı»áÏµÍ³ĞÔÆ«µÍ¡£ */
+    /* é‡‡æ ·æ—¶é—´å–æœ€æ…¢çš„ 480 å‘¨æœŸï¼šåˆ†å‹æºé˜»æŠ—æœ‰ 10k||1k â‰ˆ 0.9kï¼Œ
+     * é‡‡æ ·ç”µå®¹å……å¾—æ…¢ï¼Œæ—¶é—´ç»™ä¸å¤Ÿè¯»æ•°ä¼šç³»ç»Ÿæ€§åä½ã€‚ */
     ADC_RegularChannelConfig(ADC1, ADC_Channel_4, 1, ADC_SampleTime_480Cycles);
 
-    ADC_Cmd(ADC1, ENABLE);  /* Ê¹ÄÜ ADC1 */
+    ADC_Cmd(ADC1, ENABLE);  /* ä½¿èƒ½ ADC1 */
 
-    /* ÉÏµçºó ADC Òª ~1us ÎÈ¶¨£¬ÕâÀï¶àµÈ 10ms ±£ÏÕ£¬
-     * ÃâµÃµÚÒ»´Î¶Á»ØÀ´µÄÊÇ¸ö¼ÙÖµ¡£ */
+    /* ä¸Šç”µå ADC è¦ ~1us ç¨³å®šï¼Œè¿™é‡Œå¤šç­‰ 10ms ä¿é™©ï¼Œ
+     * å…å¾—ç¬¬ä¸€æ¬¡è¯»å›æ¥çš„æ˜¯ä¸ªå‡å€¼ã€‚ */
     Delay_ms(10U);
 
-    s_vbat_present = Vbat_CheckPresent();  /* ÉÏµçÏÈÌ½Ò»´Î·ÖÑ¹µçÂ·ÔÚ²»ÔÚ */
-    s_vbat_valid = 0U;  /* ÓĞĞ§ĞÔµÈÕæÕı¶Áµ½ºÏÀíÖµÔÙÖÃ 1 */
+    s_vbat_present = Vbat_CheckPresent();  /* ä¸Šç”µå…ˆæ¢ä¸€æ¬¡åˆ†å‹ç”µè·¯åœ¨ä¸åœ¨ */
+    s_vbat_valid = 0U;  /* æœ‰æ•ˆæ€§ç­‰çœŸæ­£è¯»åˆ°åˆç†å€¼å†ç½® 1 */
 }
 
 /*-----------------------------------------------------------
   Function:      Vbat_ConfigPin
-  Description:   °´´«ÈëµÄÄ£Ê½ÓëÉÏÏÂÀ­ÅäÖÃ PA4 Òı½Å¡£
+  Description:   æŒ‰ä¼ å…¥çš„æ¨¡å¼ä¸ä¸Šä¸‹æ‹‰é…ç½® PA4 å¼•è„šã€‚
   Calls:         GPIO_Init()
-  Called By:     Vbat_Init()¡¢Vbat_CheckPresent()
-  Input:         mode ¡ª¡ª GPIO ¹¤×÷Ä£Ê½£»pupd ¡ª¡ª ÄÚ²¿ÉÏÏÂÀ­ÉèÖÃ
-  Output:        ÎŞ
-  Return:        ÎŞ
-  Others:        ³é³É¶ÀÁ¢º¯ÊıÊÇÎªÁËÈÃ¡¸Ä£ÄâÊäÈë¡¹Óë¡¸ÍÆÍìÊä³ö·Åµç¡¹Á½ÖÖÓÃ·¨¸´ÓÃÍ¬Ò»¶Î´úÂë¡£
+  Called By:     Vbat_Init()ã€Vbat_CheckPresent()
+  Input:         mode â€”â€” GPIO å·¥ä½œæ¨¡å¼ï¼›pupd â€”â€” å†…éƒ¨ä¸Šä¸‹æ‹‰è®¾ç½®
+  Output:        æ— 
+  Return:        æ— 
+  Others:        æŠ½æˆç‹¬ç«‹å‡½æ•°æ˜¯ä¸ºäº†è®©ã€Œæ¨¡æ‹Ÿè¾“å…¥ã€ä¸ã€Œæ¨æŒ½è¾“å‡ºæ”¾ç”µã€ä¸¤ç§ç”¨æ³•å¤ç”¨åŒä¸€æ®µä»£ç ã€‚
 -----------------------------------------------------------*/
 
 static void Vbat_ConfigPin(uint32_t mode, uint32_t pupd)
 {
-    GPIO_InitTypeDef GPIO_InitStructure = {0};  /* GPIO ÅäÖÃ½á¹¹Ìå */
+    GPIO_InitTypeDef GPIO_InitStructure = {0};  /* GPIO é…ç½®ç»“æ„ä½“ */
 
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4;  /* ²Ù×÷ PA4 */
-    GPIO_InitStructure.GPIO_Mode = (GPIOMode_TypeDef)mode;  /* ¹¤×÷Ä£Ê½ÓÉµ÷ÓÃÕßÖ¸¶¨ */
-    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;  /* ÍÆÍì£¨½öÔÚÊä³öÄ£Ê½ÓĞĞ§£© */
-    GPIO_InitStructure.GPIO_PuPd = (GPIOPuPd_TypeDef)pupd;  /* ÉÏÏÂÀ­ÓÉµ÷ÓÃÕßÖ¸¶¨ */
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;  /* ÖĞËÙµµ */
-    GPIO_Init(GPIOA, &GPIO_InitStructure);  /* Ğ´Èë GPIOA ÅäÖÃ */
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4;  /* æ“ä½œ PA4 */
+    GPIO_InitStructure.GPIO_Mode = (GPIOMode_TypeDef)mode;  /* å·¥ä½œæ¨¡å¼ç”±è°ƒç”¨è€…æŒ‡å®š */
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;  /* æ¨æŒ½ï¼ˆä»…åœ¨è¾“å‡ºæ¨¡å¼æœ‰æ•ˆï¼‰ */
+    GPIO_InitStructure.GPIO_PuPd = (GPIOPuPd_TypeDef)pupd;  /* ä¸Šä¸‹æ‹‰ç”±è°ƒç”¨è€…æŒ‡å®š */
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;  /* ä¸­é€Ÿæ¡£ */
+    GPIO_Init(GPIOA, &GPIO_InitStructure);  /* å†™å…¥ GPIOA é…ç½® */
 }
 
 /*-----------------------------------------------------------
   Function:      Vbat_CheckPresent
-  Description:   ¼ì²â·ÖÑ¹µçÂ·ÊÇ·ñÕæÕı½ÓÉÏ£ºÏÈ½« PA4 À­µÍ·Åµç£¨Ğü¿ÕÏß·ÅµçºóÈÔ½Ó½ü 0V£©£¬
-                 ÔÙÇĞ»ØÄ£ÄâÊäÈë¶ÁÈ¡µçÑ¹£¬ÅĞ¶ÏÆäÊÇ·ñÂäÔÚ 4~16V ¶ÔÓ¦µÄÂëÖµÇø¼äÄÚ¡£
-  Calls:         Vbat_ConfigPin()¡¢GPIO_ResetBits()¡¢Delay_ms()¡¢ADC1_ReadChannel()¡¢ADC1_LastReadOk()
-  Called By:     Vbat_Init()¡¢Vbat_GetVolt()
-  Input:         ÎŞ
-  Output:        ÎŞ
-  Return:        1 = ¼ì²âµ½·ÖÑ¹µçÂ·£»0 = Î´½ÓÏß»ò¶ÁÊıÒì³£
-  Others:        ÓÃÓÚÇø·Ö¡¸Ã»½ÓÏß¡¹Óë¡¸µçÑ¹È·ÊµÎª 0¡¹£¬±ÜÃâ°ÑĞü¿ÕÒı½ÅµÄÆ¯ÒÆÖµµ±³ÉµçÑ¹¡£
+  Description:   æ£€æµ‹åˆ†å‹ç”µè·¯æ˜¯å¦çœŸæ­£æ¥ä¸Šï¼šå…ˆå°† PA4 æ‹‰ä½æ”¾ç”µï¼ˆæ‚¬ç©ºçº¿æ”¾ç”µåä»æ¥è¿‘ 0Vï¼‰ï¼Œ
+                 å†åˆ‡å›æ¨¡æ‹Ÿè¾“å…¥è¯»å–ç”µå‹ï¼Œåˆ¤æ–­å…¶æ˜¯å¦è½åœ¨ 4~16V å¯¹åº”çš„ç å€¼åŒºé—´å†…ã€‚
+  Calls:         Vbat_ConfigPin()ã€GPIO_ResetBits()ã€Delay_ms()ã€ADC1_ReadChannel()ã€ADC1_LastReadOk()
+  Called By:     Vbat_Init()ã€Vbat_GetVolt()
+  Input:         æ— 
+  Output:        æ— 
+  Return:        1 = æ£€æµ‹åˆ°åˆ†å‹ç”µè·¯ï¼›0 = æœªæ¥çº¿æˆ–è¯»æ•°å¼‚å¸¸
+  Others:        ç”¨äºåŒºåˆ†ã€Œæ²¡æ¥çº¿ã€ä¸ã€Œç”µå‹ç¡®å®ä¸º 0ã€ï¼Œé¿å…æŠŠæ‚¬ç©ºå¼•è„šçš„æ¼‚ç§»å€¼å½“æˆç”µå‹ã€‚
 -----------------------------------------------------------*/
 
 static uint8_t Vbat_CheckPresent(void)
 {
-    uint16_t raw;  /* ±¾´Î¶Á»ØµÄÔ­Ê¼Âë */
+    uint16_t raw;  /* æœ¬æ¬¡è¯»å›çš„åŸå§‹ç  */
 
-    /* ÏÈ°Ñ PA4 ½Úµã·Åµç¡£Ğü¿ÕµÄÒıÏßÔÚÕâÒ»²½Ö®ºóÈÔ½Ó½ü 0V£¬
-     * ¶ø D153C µÄ·ÖÑ¹ÍøÂç»áÖØĞÂ³äµ½Ä¸Ïß·ÖÑ¹Öµ¡£ */
+    /* å…ˆæŠŠ PA4 èŠ‚ç‚¹æ”¾ç”µã€‚æ‚¬ç©ºçš„å¼•çº¿åœ¨è¿™ä¸€æ­¥ä¹‹åä»æ¥è¿‘ 0Vï¼Œ
+     * è€Œ D153C çš„åˆ†å‹ç½‘ç»œä¼šé‡æ–°å……åˆ°æ¯çº¿åˆ†å‹å€¼ã€‚ */
     GPIO_ResetBits(GPIOA, GPIO_Pin_4);
-    Vbat_ConfigPin(GPIO_Mode_OUT, GPIO_PuPd_NOPULL); /* ÇĞ³ÉÆÕÍ¨Êä³ö²ÅÄÜÖ÷¶¯À­µÍ·Åµç */
-    GPIO_ResetBits(GPIOA, GPIO_Pin_4);  /* ×ª³ÉÊä³öºóÔÙÀ­µÍÒ»´Î£¬È·±£·Å¸É¾» */
-    Delay_ms(2U);  /* ·ÅµçµÈ´ı */
+    Vbat_ConfigPin(GPIO_Mode_OUT, GPIO_PuPd_NOPULL); /* åˆ‡æˆæ™®é€šè¾“å‡ºæ‰èƒ½ä¸»åŠ¨æ‹‰ä½æ”¾ç”µ */
+    GPIO_ResetBits(GPIOA, GPIO_Pin_4);  /* è½¬æˆè¾“å‡ºåå†æ‹‰ä½ä¸€æ¬¡ï¼Œç¡®ä¿æ”¾å¹²å‡€ */
+    Delay_ms(2U);  /* æ”¾ç”µç­‰å¾… */
 
-    Vbat_ConfigPin(GPIO_Mode_AN, GPIO_PuPd_NOPULL);  /* ÇĞ»ØÄ£ÄâÊäÈë */
-    Delay_ms(2U);  /* µÈ·ÖÑ¹ÍøÂçÖØĞÂ³äµç */
-    raw = ADC1_ReadChannel(ADC_Channel_4);  /* ¶ÁÒ»´Î PA4 */
+    Vbat_ConfigPin(GPIO_Mode_AN, GPIO_PuPd_NOPULL);  /* åˆ‡å›æ¨¡æ‹Ÿè¾“å…¥ */
+    Delay_ms(2U);  /* ç­‰åˆ†å‹ç½‘ç»œé‡æ–°å……ç”µ */
+    raw = ADC1_ReadChannel(ADC_Channel_4);  /* è¯»ä¸€æ¬¡ PA4 */
 
-    if (ADC1_LastReadOk() == 0U)  /* ×ª»»³¬Ê± */
+    if (ADC1_LastReadOk() == 0U)  /* è½¬æ¢è¶…æ—¶ */
     {
-        return 0U;  /* ¶Á²»µ½¾ÍÅĞÎªÎ´½ÓÏß */
+        return 0U;  /* è¯»ä¸åˆ°å°±åˆ¤ä¸ºæœªæ¥çº¿ */
     }
 
-    return ((raw >= VBAT_PRESENT_MIN_RAW) &&  /* ÂëÖµÂäÔÚºÏÀíÇø¼ä²ÅËã½ÓÉÏ */
-            (raw <= VBAT_PRESENT_MAX_RAW)) ? 1U : 0U;  /* Çø¼äÖ®ÍâÒ»ÂÉÅĞÎªÎ´½ÓÏß */
+    return ((raw >= VBAT_PRESENT_MIN_RAW) &&  /* ç å€¼è½åœ¨åˆç†åŒºé—´æ‰ç®—æ¥ä¸Š */
+            (raw <= VBAT_PRESENT_MAX_RAW)) ? 1U : 0U;  /* åŒºé—´ä¹‹å¤–ä¸€å¾‹åˆ¤ä¸ºæœªæ¥çº¿ */
 }
 
 /*-----------------------------------------------------------
   Function:      ADC1_ReadChannel
-  Description:   ADC1 Í¨ÓÃµ¥Í¨µÀ¶ÁÈ¡£ºÇĞ»»Í¨µÀ¡¢Èí¼ş´¥·¢Ò»´Î×ª»»¡¢ÂÖÑ¯µÈ´ı½áÊø²¢È¡»Ø½á¹û¡£
-  Calls:         ADC_RegularChannelConfig()¡¢ADC_SoftwareStartConv()¡¢ADC_GetFlagStatus()¡¢ADC_GetConversionValue()
-  Called By:     Vbat_GetRaw()¡¢Vbat_CheckPresent()¡¢current.c µÄµçÁ÷²ÉÑù
-  Input:         ch ¡ª¡ª ADC Í¨µÀºÅ£¨Ä¸ÏßµçÑ¹ÓÃ ADC_Channel_4£¬µçÁ÷ÓÃ ADC_Channel_5£©
-  Output:        ÎŞ
-  Return:        ×ª»»½á¹û£¨0~4095£©£»³¬Ê±·µ»Ø 0
-  Others:        1) Ã¿´Î×ª»»Ç°ÏÈÇå SR£¬±ÜÃâÉÏÒ»´ÎÒÅÁôµÄ×´Ì¬Ó°Ïì±¾´ÎÅĞ¶Ï£»
-                                  2) ×ª»»ÆÚ¼ä±£³Ö ADC Ê¹ÄÜ£¬²»ÒªÔÚ×ª»»¹ı³ÌÖĞ¹Ø±ÕÍâÉè£»
-                                  3) ·µ»Ø 0 ²»´ú±íÊ§°Ü£¬±ØĞëÔÙÓÃ ADC1_LastReadOk() È·ÈÏ¡£
+  Description:   ADC1 é€šç”¨å•é€šé“è¯»å–ï¼šåˆ‡æ¢é€šé“ã€è½¯ä»¶è§¦å‘ä¸€æ¬¡è½¬æ¢ã€è½®è¯¢ç­‰å¾…ç»“æŸå¹¶å–å›ç»“æœã€‚
+  Calls:         ADC_RegularChannelConfig()ã€ADC_SoftwareStartConv()ã€ADC_GetFlagStatus()ã€ADC_GetConversionValue()
+  Called By:     Vbat_GetRaw()ã€Vbat_CheckPresent()ã€current.c çš„ç”µæµé‡‡æ ·
+  Input:         ch â€”â€” ADC é€šé“å·ï¼ˆæ¯çº¿ç”µå‹ç”¨ ADC_Channel_4ï¼Œç”µæµç”¨ ADC_Channel_5ï¼‰
+  Output:        æ— 
+  Return:        è½¬æ¢ç»“æœï¼ˆ0~4095ï¼‰ï¼›è¶…æ—¶è¿”å› 0
+  Others:        1) æ¯æ¬¡è½¬æ¢å‰å…ˆæ¸… SRï¼Œé¿å…ä¸Šä¸€æ¬¡é—ç•™çš„çŠ¶æ€å½±å“æœ¬æ¬¡åˆ¤æ–­ï¼›
+                                  2) è½¬æ¢æœŸé—´ä¿æŒ ADC ä½¿èƒ½ï¼Œä¸è¦åœ¨è½¬æ¢è¿‡ç¨‹ä¸­å…³é—­å¤–è®¾ï¼›
+                                  3) è¿”å› 0 ä¸ä»£è¡¨å¤±è´¥ï¼Œå¿…é¡»å†ç”¨ ADC1_LastReadOk() ç¡®è®¤ã€‚
 -----------------------------------------------------------*/
 
 uint16_t ADC1_ReadChannel(uint8_t ch)
 {
-    uint16_t raw;  /* ×ª»»½á¹û */
-    uint32_t timeout = ADC1_CONVERT_TIMEOUT;  /* ³¬Ê±¼ÆÊı³õÖµ */
+    uint16_t raw;  /* è½¬æ¢ç»“æœ */
+    uint32_t timeout = ADC1_CONVERT_TIMEOUT;  /* è¶…æ—¶è®¡æ•°åˆå€¼ */
 
-    /* PA4/PA5 ¹²ÓÃÍ¬Ò»¸öÒÑÊ¹ÄÜµÄ ADC1¡£Á½´Îµ¥´Î×ª»»Ö®¼ä±£³ÖÍâÉèÊ¹ÄÜ£º
-     * ÔÚ±¾ĞÍºÅÉÏ£¬×ª»»½øĞĞÖĞ¹Ø±Õ ADC »áÁôÏÂ STRT ÖÃÎ»È´Ã»ÓĞĞÂ EOC µÄ×´Ì¬¡£ */
+    /* PA4/PA5 å…±ç”¨åŒä¸€ä¸ªå·²ä½¿èƒ½çš„ ADC1ã€‚ä¸¤æ¬¡å•æ¬¡è½¬æ¢ä¹‹é—´ä¿æŒå¤–è®¾ä½¿èƒ½ï¼š
+     * åœ¨æœ¬å‹å·ä¸Šï¼Œè½¬æ¢è¿›è¡Œä¸­å…³é—­ ADC ä¼šç•™ä¸‹ STRT ç½®ä½å´æ²¡æœ‰æ–° EOC çš„çŠ¶æ€ã€‚ */
 
-    /* ÇĞ»»ÏÂÒ»¸öÍ¨µÀÖ®Ç°£¬ÏÈÇåµô¹æÔò×éËùÓĞÒÑËø´æµÄ×´Ì¬Î»£»
-     * ÕâÍ¬Ê±»áÇåµô¡¸ÉÏ´Î×ª»»±»ÖĞ¶Ï»ò¸´Î»¡¹ÁôÏÂµÄ STRT ²ĞÁô¡£ */
+    /* åˆ‡æ¢ä¸‹ä¸€ä¸ªé€šé“ä¹‹å‰ï¼Œå…ˆæ¸…æ‰è§„åˆ™ç»„æ‰€æœ‰å·²é”å­˜çš„çŠ¶æ€ä½ï¼›
+     * è¿™åŒæ—¶ä¼šæ¸…æ‰ã€Œä¸Šæ¬¡è½¬æ¢è¢«ä¸­æ–­æˆ–å¤ä½ã€ç•™ä¸‹çš„ STRT æ®‹ç•™ã€‚ */
     ADC1->SR = 0U;
-    ADC_RegularChannelConfig(ADC1, ch, 1, ADC_SampleTime_480Cycles); /* ¹æÔò×éµÚ 1 ¸öÎ»ÖÃ·Å±¾Í¨µÀ£¬²ÉÑùÊ±¼ä 480 ÖÜÆÚ */
-    ADC_SoftwareStartConv(ADC1);  /* Èí¼ş´¥·¢Ò»´Î×ª»» */
+    ADC_RegularChannelConfig(ADC1, ch, 1, ADC_SampleTime_480Cycles); /* è§„åˆ™ç»„ç¬¬ 1 ä¸ªä½ç½®æ”¾æœ¬é€šé“ï¼Œé‡‡æ ·æ—¶é—´ 480 å‘¨æœŸ */
+    ADC_SoftwareStartConv(ADC1);  /* è½¯ä»¶è§¦å‘ä¸€æ¬¡è½¬æ¢ */
 
-    while (ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC) == RESET)  /* ÂÖÑ¯µÈ´ı×ª»»½áÊø */
+    while (ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC) == RESET)  /* è½®è¯¢ç­‰å¾…è½¬æ¢ç»“æŸ */
     {
-        if (timeout == 0U)  /* µÈ³¬Ê±ÁË */
+        if (timeout == 0U)  /* ç­‰è¶…æ—¶äº† */
         {
-            s_adc_last_ok = 0U;  /* ±ê¼Ç±¾´ÎÊ§°Ü */
-            return 0U;  /* ·µ»Ø 0£¬µ÷ÓÃ·½Ğë²é ADC1_LastReadOk() È·ÈÏ */
+            s_adc_last_ok = 0U;  /* æ ‡è®°æœ¬æ¬¡å¤±è´¥ */
+            return 0U;  /* è¿”å› 0ï¼Œè°ƒç”¨æ–¹é¡»æŸ¥ ADC1_LastReadOk() ç¡®è®¤ */
         }
-        timeout--;  /* µİ¼õ³¬Ê±¼ÆÊı */
+        timeout--;  /* é€’å‡è¶…æ—¶è®¡æ•° */
     }
 
-    s_adc_last_ok = 1U;  /* ×ª»»³É¹¦ */
-    raw = ADC_GetConversionValue(ADC1);   /* ¶Á DR »áÇåµô EOC */
+    s_adc_last_ok = 1U;  /* è½¬æ¢æˆåŠŸ */
+    raw = ADC_GetConversionValue(ADC1);   /* è¯» DR ä¼šæ¸…æ‰ EOC */
 
-    /* µ¥´Î×ª»»ÆÚ¼äÈô³öÏÖ OVR£¨Êı¾İ±»¸²¸Ç£©£¬°ÑËüÇåµô */
+    /* å•æ¬¡è½¬æ¢æœŸé—´è‹¥å‡ºç° OVRï¼ˆæ•°æ®è¢«è¦†ç›–ï¼‰ï¼ŒæŠŠå®ƒæ¸…æ‰ */
     if (ADC_GetFlagStatus(ADC1, ADC_FLAG_OVR) != RESET)
     {
-        ADC_ClearFlag(ADC1, ADC_FLAG_OVR);  /* Çåµô OVR ±êÖ¾ */
+        ADC_ClearFlag(ADC1, ADC_FLAG_OVR);  /* æ¸…æ‰ OVR æ ‡å¿— */
     }
 
-    return raw;  /* ·µ»Ø 12 Î»½á¹û */
+    return raw;  /* è¿”å› 12 ä½ç»“æœ */
 }
 
 /*-----------------------------------------------------------
   Function:      ADC1_LastReadOk
-  Description:   ²éÑ¯×î½üÒ»´Î ADC1 ×ª»»ÊÇ·ñÔÚ³¬Ê±Ç°Íê³É¡£
-  Calls:         ÎŞ
-  Called By:     Vbat_GetVolt()¡¢Vbat_CheckPresent()¡¢current.c
-  Input:         ÎŞ
-  Output:        ÎŞ
-  Return:        1 = ×ª»»³É¹¦£»0 = ³¬Ê±Î´Íê³É
-  Others:        ÎŞ
+  Description:   æŸ¥è¯¢æœ€è¿‘ä¸€æ¬¡ ADC1 è½¬æ¢æ˜¯å¦åœ¨è¶…æ—¶å‰å®Œæˆã€‚
+  Calls:         æ— 
+  Called By:     Vbat_GetVolt()ã€Vbat_CheckPresent()ã€current.c
+  Input:         æ— 
+  Output:        æ— 
+  Return:        1 = è½¬æ¢æˆåŠŸï¼›0 = è¶…æ—¶æœªå®Œæˆ
+  Others:        æ— 
 -----------------------------------------------------------*/
 
 uint8_t ADC1_LastReadOk(void)
 {
-    return s_adc_last_ok;  /* ·µ»Ø×î½üÒ»´Î×ª»»×´Ì¬ */
+    return s_adc_last_ok;  /* è¿”å›æœ€è¿‘ä¸€æ¬¡è½¬æ¢çŠ¶æ€ */
 }
 
 /*-----------------------------------------------------------
   Function:      Vbat_GetRaw
-  Description:   ¶ÁÈ¡Ä¸ÏßµçÑ¹Í¨µÀµÄÔ­Ê¼ ADC Öµ£¨Î´³Ë·ÖÑ¹±È£©¡£
+  Description:   è¯»å–æ¯çº¿ç”µå‹é€šé“çš„åŸå§‹ ADC å€¼ï¼ˆæœªä¹˜åˆ†å‹æ¯”ï¼‰ã€‚
   Calls:         ADC1_ReadChannel()
-  Called By:     ±ê¶¨ÓëÕï¶Ï
-  Input:         ÎŞ
-  Output:        ÎŞ
-  Return:        Ô­Ê¼ ADC Öµ£¨0~4095£©
-  Others:        ÎŞ
+  Called By:     æ ‡å®šä¸è¯Šæ–­
+  Input:         æ— 
+  Output:        æ— 
+  Return:        åŸå§‹ ADC å€¼ï¼ˆ0~4095ï¼‰
+  Others:        æ— 
 -----------------------------------------------------------*/
 
 uint16_t Vbat_GetRaw(void)
 {
-    return ADC1_ReadChannel(ADC_Channel_4);  /* ¶Á PA4£¨Ä¸ÏßµçÑ¹Í¨µÀ£© */
+    return ADC1_ReadChannel(ADC_Channel_4);  /* è¯» PA4ï¼ˆæ¯çº¿ç”µå‹é€šé“ï¼‰ */
 }
 
 /*-----------------------------------------------------------
   Function:      Vbat_GetVolt
-  Description:   È¡Ä¸ÏßµçÑ¹£ºÏÈÈ·ÈÏ·ÖÑ¹µçÂ·ÔÚÎ»£¬ÔÙ×ö 8 ´Î²ÉÑùÈ¡Æ½¾ù²¢°´·ÖÑ¹±È»»ËãÎª·üÌØ¡£
-  Calls:         Vbat_CheckPresent()¡¢Vbat_GetRaw()¡¢ADC1_LastReadOk()
-  Called By:     main.c Ö÷Ñ­»·¡¢telemetry.c ×éÖ¡
-  Input:         ÎŞ
-  Output:        ÎŞ
-  Return:        Ä¸ÏßµçÑ¹(V)£»Î´½Ó·ÖÑ¹»ò½á¹û³¬³ö 4~16V Ê±·µ»Ø 0.0f
-  Others:        »»Ëã¹«Ê½£ºVM = Æ½¾ùÂë / 4095 x 3.3V x 11£»ÈÎÒ»»·½ÚÊ§°Ü¼´ÖÃÎŞĞ§±êÖ¾²¢·µ»Ø 0.0f¡£
+  Description:   å–æ¯çº¿ç”µå‹ï¼šå…ˆç¡®è®¤åˆ†å‹ç”µè·¯åœ¨ä½ï¼Œå†åš 8 æ¬¡é‡‡æ ·å–å¹³å‡å¹¶æŒ‰åˆ†å‹æ¯”æ¢ç®—ä¸ºä¼ç‰¹ã€‚
+  Calls:         Vbat_CheckPresent()ã€Vbat_GetRaw()ã€ADC1_LastReadOk()
+  Called By:     main.c ä¸»å¾ªç¯ã€telemetry.c ç»„å¸§
+  Input:         æ— 
+  Output:        æ— 
+  Return:        æ¯çº¿ç”µå‹(V)ï¼›æœªæ¥åˆ†å‹æˆ–ç»“æœè¶…å‡º 4~16V æ—¶è¿”å› 0.0f
+  Others:        æ¢ç®—å…¬å¼ï¼šVM = å¹³å‡ç  / 4095 x 3.3V x 11ï¼›ä»»ä¸€ç¯èŠ‚å¤±è´¥å³ç½®æ— æ•ˆæ ‡å¿—å¹¶è¿”å› 0.0fã€‚
 -----------------------------------------------------------*/
 
 float Vbat_GetVolt(void)
 {
-    uint32_t sum = 0U;  /* 8 ´Î²ÉÑùÀÛ¼ÓºÍ */
-    uint8_t i;  /* Ñ­»·ÏÂ±ê */
-    float volt;  /* »»ËãºóµÄµçÑ¹ */
+    uint32_t sum = 0U;  /* 8 æ¬¡é‡‡æ ·ç´¯åŠ å’Œ */
+    uint8_t i;  /* å¾ªç¯ä¸‹æ ‡ */
+    float volt;  /* æ¢ç®—åçš„ç”µå‹ */
 
-    s_vbat_present = Vbat_CheckPresent();  /* Ã¿´ÎÈ¡ÖµÇ°¶¼È·ÈÏ·ÖÑ¹µçÂ·ÔÚÎ» */
-    if (s_vbat_present == 0U)  /* Ã»½ÓÏß */
+    s_vbat_present = Vbat_CheckPresent();  /* æ¯æ¬¡å–å€¼å‰éƒ½ç¡®è®¤åˆ†å‹ç”µè·¯åœ¨ä½ */
+    if (s_vbat_present == 0U)  /* æ²¡æ¥çº¿ */
     {
-        s_vbat_valid = 0U;  /* ÖÃÎªÎŞĞ§ */
-        return 0.0f;  /* ·µ»Ø 0£¬ÆÁÉÏÏÔÊ¾ -- */
+        s_vbat_valid = 0U;  /* ç½®ä¸ºæ— æ•ˆ */
+        return 0.0f;  /* è¿”å› 0ï¼Œå±ä¸Šæ˜¾ç¤º -- */
     }
 
-    for (i = 0U; i < VBAT_ADC_AVG; i++)  /* ²É 8 ´ÎÈ¡Æ½¾ù£¬Ñ¹µôËæ»úÔëÉù */
+    for (i = 0U; i < VBAT_ADC_AVG; i++)  /* é‡‡ 8 æ¬¡å–å¹³å‡ï¼Œå‹æ‰éšæœºå™ªå£° */
     {
-        sum += Vbat_GetRaw();  /* ÀÛ¼Ó±¾´ÎÔ­Ê¼Âë */
-        if (ADC1_LastReadOk() == 0U)  /* ÈÎÒ»´Î×ª»»Ê§°Ü */
+        sum += Vbat_GetRaw();  /* ç´¯åŠ æœ¬æ¬¡åŸå§‹ç  */
+        if (ADC1_LastReadOk() == 0U)  /* ä»»ä¸€æ¬¡è½¬æ¢å¤±è´¥ */
         {
-            s_vbat_valid = 0U;  /* ÕûÌåÖÃÎªÎŞĞ§ */
-            return 0.0f;  /* ²»ÓÃ°ë½ØÊı¾İ³ö½á¹û */
+            s_vbat_valid = 0U;  /* æ•´ä½“ç½®ä¸ºæ— æ•ˆ */
+            return 0.0f;  /* ä¸ç”¨åŠæˆªæ•°æ®å‡ºç»“æœ */
         }
-        /* ²ÉÑù´°¿Ú±¾ÉíÒÑ×ã¹»ÈÃÕâ¸öµÍ×è·ÖÑ¹ÍøÂçÎÈ¶¨£¬ÎŞĞè¶îÍâÑÓÊ± */
+        /* é‡‡æ ·çª—å£æœ¬èº«å·²è¶³å¤Ÿè®©è¿™ä¸ªä½é˜»åˆ†å‹ç½‘ç»œç¨³å®šï¼Œæ— éœ€é¢å¤–å»¶æ—¶ */
     }
 
-    volt = ((float)sum / (float)VBAT_ADC_AVG) / VBAT_ADC_FULL  /* Æ½¾ùÂë -> µçÑ¹£º³ıÂúÁ¿³Ì£¬ÔÙ³Ë 3.3V Óë·ÖÑ¹±È 11 */
+    volt = ((float)sum / (float)VBAT_ADC_AVG) / VBAT_ADC_FULL  /* å¹³å‡ç  -> ç”µå‹ï¼šé™¤æ»¡é‡ç¨‹ï¼Œå†ä¹˜ 3.3V ä¸åˆ†å‹æ¯” 11 */
            * VBAT_VREF * VBAT_DIV_RATIO;
 
-    if ((volt < VBAT_VALID_MIN) || (volt > VBAT_VALID_MAX))  /* Ô½½ç¼´ÅĞÎª²»¿ÉĞÅ */
+    if ((volt < VBAT_VALID_MIN) || (volt > VBAT_VALID_MAX))  /* è¶Šç•Œå³åˆ¤ä¸ºä¸å¯ä¿¡ */
     {
-        s_vbat_valid = 0U;  /* Ô½½ç£ºÖÃÎŞĞ§ */
-        return 0.0f;  /* ·µ»Ø 0 */
+        s_vbat_valid = 0U;  /* è¶Šç•Œï¼šç½®æ— æ•ˆ */
+        return 0.0f;  /* è¿”å› 0 */
     }
 
-    s_vbat_valid = 1U;  /* Ò»ÇĞÕı³££ºÖÃÓĞĞ§ */
-    return volt;  /* ·µ»ØµçÑ¹Öµ£¨V£© */
+    s_vbat_valid = 1U;  /* ä¸€åˆ‡æ­£å¸¸ï¼šç½®æœ‰æ•ˆ */
+    return volt;  /* è¿”å›ç”µå‹å€¼ï¼ˆVï¼‰ */
 }
 
 /*-----------------------------------------------------------
   Function:      Vbat_IsValid
-  Description:   ²éÑ¯Ä¸ÏßµçÑ¹Êı¾İµ±Ç°ÊÇ·ñ¿ÉĞÅ¡£
-  Calls:         ÎŞ
-  Called By:     main.c£¨¾ö¶¨ÏÔÊ¾ÊıÖµ»¹ÊÇ --£©¡¢telemetry.c£¨¾ö¶¨ÊÇ·ñÖÃÓĞĞ§Î»£©
-  Input:         ÎŞ
-  Output:        ÎŞ
-  Return:        1 = ¿ÉĞÅ£»0 = È±Ê§»ò³¬³ö·¶Î§
-  Others:        ÎŞ
+  Description:   æŸ¥è¯¢æ¯çº¿ç”µå‹æ•°æ®å½“å‰æ˜¯å¦å¯ä¿¡ã€‚
+  Calls:         æ— 
+  Called By:     main.cï¼ˆå†³å®šæ˜¾ç¤ºæ•°å€¼è¿˜æ˜¯ --ï¼‰ã€telemetry.cï¼ˆå†³å®šæ˜¯å¦ç½®æœ‰æ•ˆä½ï¼‰
+  Input:         æ— 
+  Output:        æ— 
+  Return:        1 = å¯ä¿¡ï¼›0 = ç¼ºå¤±æˆ–è¶…å‡ºèŒƒå›´
+  Others:        æ— 
 -----------------------------------------------------------*/
 
 uint8_t Vbat_IsValid(void)
 {
-    return s_vbat_valid;  /* ·µ»ØÓĞĞ§ĞÔ±êÖ¾ */
+    return s_vbat_valid;  /* è¿”å›æœ‰æ•ˆæ€§æ ‡å¿— */
 }

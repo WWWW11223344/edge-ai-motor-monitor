@@ -1,49 +1,49 @@
 /************************************************************
-  Copyright (C), 2026, ÍôÏÍÔÆ
+  Copyright (C), 2026, æ±ªè´¤äº‘
   FileName:    led.c
-  Author:      ÍôÏÍÔÆ
+  Author:      æ±ªè´¤äº‘
   Version:     1.0
   Date:        2026-09-21
-  Description: °åÔØ LED0£¨PF9£©µÄ³õÊ¼»¯¡£LED0 ÎªµÍµçÆ½µãÁÁ¡£
-               PF9 Óë±¾¹¤³Ì pwm.c ÖÐµÄ PWM_LED_Init() ¸´ÓÃÍ¬Ò»Òý½Å£¬
-               Á½Õß²»¿ÉÍ¬Ê±ÉúÐ§£ººóµ÷ÓÃµÄÅäÖÃ»á¸²¸ÇÏÈµ÷ÓÃµÄ¡£
+  Description: æ¿è½½ LED0ï¼ˆPF9ï¼‰çš„åˆå§‹åŒ–ã€‚LED0 ä¸ºä½Žç”µå¹³ç‚¹äº®ã€‚
+               PF9 ä¸Žæœ¬å·¥ç¨‹ pwm.c ä¸­çš„ PWM_LED_Init() å¤ç”¨åŒä¸€å¼•è„šï¼Œ
+               ä¸¤è€…ä¸å¯åŒæ—¶ç”Ÿæ•ˆï¼šåŽè°ƒç”¨çš„é…ç½®ä¼šè¦†ç›–å…ˆè°ƒç”¨çš„ã€‚
   Function List:
-    1. LED_Init()  ÅäÖÃ PF9 ÎªÍÆÍìÊä³ö
+    1. LED_Init()  é…ç½® PF9 ä¸ºæŽ¨æŒ½è¾“å‡º
   History:
     <author>   <time>      <version>   <desc>
-    ÍôÏÍÔÆ     2026-09-21    1.0         ´´½¨ÎÄ¼þ
+    æ±ªè´¤äº‘     2026-09-21    1.0         åˆ›å»ºæ–‡ä»¶
 ***********************************************************/
 #include "led.h"
 #include "stm32f4xx.h"
 
-//PF9--¡·LED0--¡·µÍÁÁ
+//PF9--ã€‹LED0--ã€‹ä½Žäº®
 /*-----------------------------------------------------------
   Function:      LED_Init
-  Description:   °Ñ PF9 ÅäÖÃÎªÍÆÍìÊä³ö£¬ÓÃÓÚÇý¶¯°åÔØ LED0¡£
-                 ÄÚ²¿ÉÏÀ­Ê¹Òý½ÅÔÚÉÏµç¸ß×èÆÚ¼ä±£³Ö¸ßµçÆ½£¬LED ²»»áÉÁÒ»ÏÂ¡£
-  Calls:         ÎÞ
-  Called By:     main.c ³õÊ¼»¯²¿·Ö£¨Ö»µ÷ÓÃÒ»´Î£©
-  Input:         ÎÞ
-  Output:        ÎÞ
-  Return:        ÎÞ
-  Others:        ±¾º¯ÊýÖ»×öÒý½ÅÅäÖÃ£¬²»µãÁÁ LED£»µãµÆÓÉ main.c ÖÐµÄ GPIO ²Ù×÷Íê³É¡£
+  Description:   æŠŠ PF9 é…ç½®ä¸ºæŽ¨æŒ½è¾“å‡ºï¼Œç”¨äºŽé©±åŠ¨æ¿è½½ LED0ã€‚
+                 å†…éƒ¨ä¸Šæ‹‰ä½¿å¼•è„šåœ¨ä¸Šç”µé«˜é˜»æœŸé—´ä¿æŒé«˜ç”µå¹³ï¼ŒLED ä¸ä¼šé—ªä¸€ä¸‹ã€‚
+  Calls:         æ— 
+  Called By:     main.c åˆå§‹åŒ–éƒ¨åˆ†ï¼ˆåªè°ƒç”¨ä¸€æ¬¡ï¼‰
+  Input:         æ— 
+  Output:        æ— 
+  Return:        æ— 
+  Others:        æœ¬å‡½æ•°åªåšå¼•è„šé…ç½®ï¼Œä¸ç‚¹äº® LEDï¼›ç‚¹ç¯ç”± main.c ä¸­çš„ GPIO æ“ä½œå®Œæˆã€‚
 -----------------------------------------------------------*/
 void LED_Init(void)
 {
 	
-	//¶¨ÒåGPIOÍâÉè½á¹¹Ìå±äÁ¿
+	//å®šä¹‰GPIOå¤–è®¾ç»“æž„ä½“å˜é‡
 	GPIO_InitTypeDef  GPIO_InitStructure;
-	//¿ª¹Ø--¡·Ê±ÖÓ¿ª¹Ø¡¢Ê±ÖÓÊ¹ÄÜ
+	//å¼€å…³--ã€‹æ—¶é’Ÿå¼€å…³ã€æ—¶é’Ÿä½¿èƒ½
     RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOF, ENABLE);
  
-   //½á¹¹Ìå³ÉÔ±µÄÅäÖÃ
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;//Ö¸¶¨Òý½ÅºÅ
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;//Êä³ö¹¤×÷Ä£Ê½
-    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;//ÍÆÍìÊä³ö
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;//Òý½Å¸ßËÙÏìÓ¦
-    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;//ÉÏÀ­Ä£Ê½
+   //ç»“æž„ä½“æˆå‘˜çš„é…ç½®
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9;//æŒ‡å®šå¼•è„šå·
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;//è¾“å‡ºå·¥ä½œæ¨¡å¼
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;//æŽ¨æŒ½è¾“å‡º
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;//å¼•è„šé«˜é€Ÿå“åº”
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;//ä¸Šæ‹‰æ¨¡å¼
 	
-	//³õÊ¼»¯¶Ë¿Ú
+	//åˆå§‹åŒ–ç«¯å£
     GPIO_Init(GPIOF, &GPIO_InitStructure);
 	
 	

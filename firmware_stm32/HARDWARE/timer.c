@@ -1,71 +1,71 @@
 /************************************************************
-  Copyright (C), 2026, ÍôÏÍÔÆ
+  Copyright (C), 2026, æ±ªè´¤äº‘
   FileName:    timer.c
-  Author:      ÍôÏÍÔÆ
+  Author:      æ±ªè´¤äº‘
   Version:     1.0
   Date:        2026-09-21
-  Description: TIM6¡¢TIM7 Á½¸ö»ù±¾¶¨Ê±Æ÷µÄÖĞ¶ÏÅäÖÃ¡£
-               TIM6 Ã¿ 1 Ãë²úÉúÒ»´ÎÖĞ¶Ï£¬ÓÃÓÚÂıËÙ½ÚÅÄÓëÔËĞĞÍ³¼Æ£»
-               TIM7 Ã¿ 1 ºÁÃë²úÉúÒ»´ÎÖĞ¶Ï£¬×÷ÎªÏµÍ³ĞÄÌø£¬
-               °´¼üÉ¨Ãè¡¢¸÷Â·Èí¼ş¼ÆÊ±¡¢Ò£²â 10ms ½ÚÅÄ¶¼ÒÔËüÎª×¼¡£
-               Ê±ÖÓ¼ÆËã£ºAPB1 = 42MHz£¬APB1 ·ÖÆµ²»Îª 1 Ê±¶¨Ê±Æ÷Ê±ÖÓÎª×ÜÏß 2 ±¶£¬
-               ¼´ TIM6/TIM7 Ê±ÖÓ = 84MHz£»84MHz/8400 = 10kHz£¬
-               ¹Ê TIM6 Êı 10000 ´ÎµÃ 1s£¬TIM7 Êı 10 ´ÎµÃ 1ms¡£
+  Description: TIM6ã€TIM7 ä¸¤ä¸ªåŸºæœ¬å®šæ—¶å™¨çš„ä¸­æ–­é…ç½®ã€‚
+               TIM6 æ¯ 1 ç§’äº§ç”Ÿä¸€æ¬¡ä¸­æ–­ï¼Œç”¨äºæ…¢é€ŸèŠ‚æ‹ä¸è¿è¡Œç»Ÿè®¡ï¼›
+               TIM7 æ¯ 1 æ¯«ç§’äº§ç”Ÿä¸€æ¬¡ä¸­æ–­ï¼Œä½œä¸ºç³»ç»Ÿå¿ƒè·³ï¼Œ
+               æŒ‰é”®æ‰«æã€å„è·¯è½¯ä»¶è®¡æ—¶ã€é¥æµ‹ 10ms èŠ‚æ‹éƒ½ä»¥å®ƒä¸ºå‡†ã€‚
+               æ—¶é’Ÿè®¡ç®—ï¼šAPB1 = 42MHzï¼ŒAPB1 åˆ†é¢‘ä¸ä¸º 1 æ—¶å®šæ—¶å™¨æ—¶é’Ÿä¸ºæ€»çº¿ 2 å€ï¼Œ
+               å³ TIM6/TIM7 æ—¶é’Ÿ = 84MHzï¼›84MHz/8400 = 10kHzï¼Œ
+               æ•… TIM6 æ•° 10000 æ¬¡å¾— 1sï¼ŒTIM7 æ•° 10 æ¬¡å¾— 1msã€‚
   Function List:
-    1. Tim6_Init()  ÅäÖÃ TIM6 Îª 1 Ãë¸üĞÂÖĞ¶Ï
-    2. Tim7_Init()  ÅäÖÃ TIM7 Îª 1 ºÁÃë¸üĞÂÖĞ¶Ï
+    1. Tim6_Init()  é…ç½® TIM6 ä¸º 1 ç§’æ›´æ–°ä¸­æ–­
+    2. Tim7_Init()  é…ç½® TIM7 ä¸º 1 æ¯«ç§’æ›´æ–°ä¸­æ–­
   History:
     <author>   <time>      <version>   <desc>
-    ÍôÏÍÔÆ     2026-09-21    1.0         ´´½¨ÎÄ¼ş
-    ÍôÏÍÔÆ     2026-10-16    1.1         °´¡¶»ªÎª±à³Ì¹æ·¶¡·²¹³äÖĞÎÄ×¢ÊÍ
+    æ±ªè´¤äº‘     2026-09-21    1.0         åˆ›å»ºæ–‡ä»¶
+    æ±ªè´¤äº‘     2026-10-16    1.1         æŒ‰ã€Šåä¸ºç¼–ç¨‹è§„èŒƒã€‹è¡¥å……ä¸­æ–‡æ³¨é‡Š
 ***********************************************************/
 #include "timer.h"
 #include "stm32f4xx.h"
 
 
-//TIM6---¡·1SÖĞ¶Ï
+//TIM6---ã€‹1Sä¸­æ–­
 /*-----------------------------------------------------------
   Function:      Tim6_Init
-  Description:   ÅäÖÃ TIM6£ºPSC = 8400-1¡¢ARR = 10000-1£¬²úÉú 1 Ãë¶¨Ê±ÖĞ¶Ï£»
-                 NVIC ÇÀÕ¼ÓÅÏÈ¼¶ 0¡¢×ÓÓÅÏÈ¼¶ 0¡£
-                 ÖĞ¶Ï·şÎñº¯ÊıÎ»ÓÚ stm32f4xx_it.c µÄ TIM6_DAC_IRQHandler¡£
-  Calls:         ÎŞ
-  Called By:     main.c ³õÊ¼»¯²¿·Ö£¨Ö»µ÷ÓÃÒ»´Î£©
-  Input:         ÎŞ
-  Output:        ÎŞ
-  Return:        ÎŞ
-  Others:        ±¾º¯ÊıÖ»Íê³ÉÅäÖÃÓëÆô¶¯£¬²»°üº¬ÈÎºÎÖĞ¶Ï´¦ÀíÂß¼­¡£
+  Description:   é…ç½® TIM6ï¼šPSC = 8400-1ã€ARR = 10000-1ï¼Œäº§ç”Ÿ 1 ç§’å®šæ—¶ä¸­æ–­ï¼›
+                 NVIC æŠ¢å ä¼˜å…ˆçº§ 0ã€å­ä¼˜å…ˆçº§ 0ã€‚
+                 ä¸­æ–­æœåŠ¡å‡½æ•°ä½äº stm32f4xx_it.c çš„ TIM6_DAC_IRQHandlerã€‚
+  Calls:         æ— 
+  Called By:     main.c åˆå§‹åŒ–éƒ¨åˆ†ï¼ˆåªè°ƒç”¨ä¸€æ¬¡ï¼‰
+  Input:         æ— 
+  Output:        æ— 
+  Return:        æ— 
+  Others:        æœ¬å‡½æ•°åªå®Œæˆé…ç½®ä¸å¯åŠ¨ï¼Œä¸åŒ…å«ä»»ä½•ä¸­æ–­å¤„ç†é€»è¾‘ã€‚
 -----------------------------------------------------------*/
 void Tim6_Init(void)
 {
 
-    TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;    /* TIM6 Ê±»ù½á¹¹Ìå */
-	NVIC_InitTypeDef NVIC_InitStructure;	/* NVIC ÖĞ¶ÏÓÅÏÈ¼¶½á¹¹Ìå */
+    TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;    /* TIM6 æ—¶åŸºç»“æ„ä½“ */
+	NVIC_InitTypeDef NVIC_InitStructure;	/* NVIC ä¸­æ–­ä¼˜å…ˆçº§ç»“æ„ä½“ */
 	
 	
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM6, ENABLE);	/* Ê¹ÄÜ TIM6 Ê±ÖÓ£¨TIM6 ¹ÒÔÚ APB1£© */
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM6, ENABLE);	/* ä½¿èƒ½ TIM6 æ—¶é’Ÿï¼ˆTIM6 æŒ‚åœ¨ APB1ï¼‰ */
 
-	/* APB1 ×ÜÏß 42 MHz£¬APB1 ·ÖÆµ²»Îª 1 Ê±¶¨Ê±Æ÷Ê±ÖÓÈ¡×ÜÏß 2 ±¶ = 84 MHz¡£
-	 * 84 MHz / 8400 = 10 kHz£¬¼´Ò»¸ö¼ÆÊı = 0.1 ms£»
-	 * Êı 10000 ¸öÊı = 1 s£¬¾ÍÊÇ TIM6 µÄ 1 ÃëÖÜÆÚ¡£ */
+	/* APB1 æ€»çº¿ 42 MHzï¼ŒAPB1 åˆ†é¢‘ä¸ä¸º 1 æ—¶å®šæ—¶å™¨æ—¶é’Ÿå–æ€»çº¿ 2 å€ = 84 MHzã€‚
+	 * 84 MHz / 8400 = 10 kHzï¼Œå³ä¸€ä¸ªè®¡æ•° = 0.1 msï¼›
+	 * æ•° 10000 ä¸ªæ•° = 1 sï¼Œå°±æ˜¯ TIM6 çš„ 1 ç§’å‘¨æœŸã€‚ */
     TIM_TimeBaseStructure.TIM_Prescaler = 8400-1;//PSC
-    TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;//¼ÆÊıÄ£Ê½
+    TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;//è®¡æ•°æ¨¡å¼
     TIM_TimeBaseStructure.TIM_Period = 10000-1;//ARR
-    TIM_TimeBaseStructure.TIM_ClockDivision = 0;    /* Ê±ÖÓ·Ö¸î£º²»Ê¹ÓÃÊı×ÖÂË²¨£¬¹Ì¶¨Ìî 0 */
+    TIM_TimeBaseStructure.TIM_ClockDivision = 0;    /* æ—¶é’Ÿåˆ†å‰²ï¼šä¸ä½¿ç”¨æ•°å­—æ»¤æ³¢ï¼Œå›ºå®šå¡« 0 */
  
-	//³õÊ¼»¯ÅäÖÃ
+	//åˆå§‹åŒ–é…ç½®
     TIM_TimeBaseInit(TIM6, &TIM_TimeBaseStructure);
 	
-	NVIC_InitStructure.NVIC_IRQChannel = TIM6_DAC_IRQn ;//Ñ¡ÔñÖĞ¶Ï±àºÅ
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;    /* ÇÀÕ¼ÓÅÏÈ¼¶ 0£¨×î¸ß£© */
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;    /* ×ÓÓÅÏÈ¼¶ 0 */
-    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;    /* Ê¹ÄÜ¸ÃÖĞ¶ÏÍ¨µÀ */
-    NVIC_Init(&NVIC_InitStructure);     /* Ğ´Èë NVIC£¬ÕıÊ½´ò¿ªÖĞ¶Ï */
+	NVIC_InitStructure.NVIC_IRQChannel = TIM6_DAC_IRQn ;//é€‰æ‹©ä¸­æ–­ç¼–å·
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;    /* æŠ¢å ä¼˜å…ˆçº§ 0ï¼ˆæœ€é«˜ï¼‰ */
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;    /* å­ä¼˜å…ˆçº§ 0 */
+    NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;    /* ä½¿èƒ½è¯¥ä¸­æ–­é€šé“ */
+    NVIC_Init(&NVIC_InitStructure);     /* å†™å…¥ NVICï¼Œæ­£å¼æ‰“å¼€ä¸­æ–­ */
 	
-	//¿ªÆô¶¨Ê±Æ÷ÖĞ¶Ï--¡·¸üĞÂÖĞ¶Ï
+	//å¼€å¯å®šæ—¶å™¨ä¸­æ–­--ã€‹æ›´æ–°ä¸­æ–­
 	TIM_ITConfig(TIM6, TIM_IT_Update, ENABLE);
 	
-	//Æô¶¯¶¨Ê±Æ÷6
+	//å¯åŠ¨å®šæ—¶å™¨6
 	TIM_Cmd(TIM6,ENABLE);
 	
 
@@ -74,44 +74,44 @@ void Tim6_Init(void)
 	
 }
 
-//TIM7---¡·1msÖĞ¶Ï£¨¸ø±àÂëÆ÷²âËÙµ±²ÉÑù»ù×¼£©
+//TIM7---ã€‹1msä¸­æ–­ï¼ˆç»™ç¼–ç å™¨æµ‹é€Ÿå½“é‡‡æ ·åŸºå‡†ï¼‰
 /*-----------------------------------------------------------
   Function:      Tim7_Init
-  Description:   ÅäÖÃ TIM7£ºPSC = 8400-1¡¢ARR = 10-1£¬²úÉú 1 ºÁÃë¶¨Ê±ÖĞ¶Ï£»
-                 NVIC ÇÀÕ¼ÓÅÏÈ¼¶ 1¡¢×ÓÓÅÏÈ¼¶ 1£¨µÍÓÚ TIM6£©¡£
-                 ÖĞ¶Ï·şÎñº¯ÊıÎ»ÓÚ stm32f4xx_it.c µÄ TIM7_IRQHandler¡£
-  Calls:         ÎŞ
-  Called By:     main.c ³õÊ¼»¯²¿·Ö£¨Ö»µ÷ÓÃÒ»´Î£©
-  Input:         ÎŞ
-  Output:        ÎŞ
-  Return:        ÎŞ
-  Others:        ±ØĞëÔÚ Key_Init() Ö®ºóµ÷ÓÃ£ºÖĞ¶ÏÒ»¿ªÆô¾Í»áÈ¥¶Á°´¼üÒı½Å¡£
+  Description:   é…ç½® TIM7ï¼šPSC = 8400-1ã€ARR = 10-1ï¼Œäº§ç”Ÿ 1 æ¯«ç§’å®šæ—¶ä¸­æ–­ï¼›
+                 NVIC æŠ¢å ä¼˜å…ˆçº§ 1ã€å­ä¼˜å…ˆçº§ 1ï¼ˆä½äº TIM6ï¼‰ã€‚
+                 ä¸­æ–­æœåŠ¡å‡½æ•°ä½äº stm32f4xx_it.c çš„ TIM7_IRQHandlerã€‚
+  Calls:         æ— 
+  Called By:     main.c åˆå§‹åŒ–éƒ¨åˆ†ï¼ˆåªè°ƒç”¨ä¸€æ¬¡ï¼‰
+  Input:         æ— 
+  Output:        æ— 
+  Return:        æ— 
+  Others:        å¿…é¡»åœ¨ Key_Init() ä¹‹åè°ƒç”¨ï¼šä¸­æ–­ä¸€å¼€å¯å°±ä¼šå»è¯»æŒ‰é”®å¼•è„šã€‚
 -----------------------------------------------------------*/
 void Tim7_Init(void)
 {
-	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;	/* TIM7 Ê±»ù½á¹¹Ìå */
-	NVIC_InitTypeDef NVIC_InitStructure;	/* NVIC ÖĞ¶ÏÓÅÏÈ¼¶½á¹¹Ìå */
+	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;	/* TIM7 æ—¶åŸºç»“æ„ä½“ */
+	NVIC_InitTypeDef NVIC_InitStructure;	/* NVIC ä¸­æ–­ä¼˜å…ˆçº§ç»“æ„ä½“ */
 
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM7, ENABLE);	/* Ê¹ÄÜ TIM7 Ê±ÖÓ£¨TIM7 ¹ÒÔÚ APB1£© */
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM7, ENABLE);	/* ä½¿èƒ½ TIM7 æ—¶é’Ÿï¼ˆTIM7 æŒ‚åœ¨ APB1ï¼‰ */
 
-	/* Í¬ÑùµØ£¬TIM7 ¼ÆÊıÊ±ÖÓ = 84 MHz£¬PSC È¡ 8400-1 µÃ 10 kHz£¬
-	 * Ò»¸ö¼ÆÊı = 0.1 ms£»Êı 10 ¸öÊı = 1 ms£¬¾ÍÊÇ 1 ºÁÃëĞÄÌø¡£ */
+	/* åŒæ ·åœ°ï¼ŒTIM7 è®¡æ•°æ—¶é’Ÿ = 84 MHzï¼ŒPSC å– 8400-1 å¾— 10 kHzï¼Œ
+	 * ä¸€ä¸ªè®¡æ•° = 0.1 msï¼›æ•° 10 ä¸ªæ•° = 1 msï¼Œå°±æ˜¯ 1 æ¯«ç§’å¿ƒè·³ã€‚ */
 	TIM_TimeBaseStructure.TIM_Prescaler = 8400-1;//PSC
-	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;//¼ÆÊıÄ£Ê½
+	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;//è®¡æ•°æ¨¡å¼
 	TIM_TimeBaseStructure.TIM_Period = 10-1;//ARR
-	TIM_TimeBaseStructure.TIM_ClockDivision = 0;	/* Ê±ÖÓ·Ö¸î£º²»Ê¹ÓÃÊı×ÖÂË²¨£¬¹Ì¶¨Ìî 0 */
+	TIM_TimeBaseStructure.TIM_ClockDivision = 0;	/* æ—¶é’Ÿåˆ†å‰²ï¼šä¸ä½¿ç”¨æ•°å­—æ»¤æ³¢ï¼Œå›ºå®šå¡« 0 */
 
-	TIM_TimeBaseInit(TIM7, &TIM_TimeBaseStructure);	/* Ğ´Èë TIM7 Ê±»ùÅäÖÃ */
+	TIM_TimeBaseInit(TIM7, &TIM_TimeBaseStructure);	/* å†™å…¥ TIM7 æ—¶åŸºé…ç½® */
 
-	NVIC_InitStructure.NVIC_IRQChannel = TIM7_IRQn;//Ñ¡ÔñÖĞ¶Ï±àºÅ
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;	/* ÇÀÕ¼ÓÅÏÈ¼¶ 1£¨µÍÓÚ TIM6£© */
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;	/* ×ÓÓÅÏÈ¼¶ 1 */
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;	/* Ê¹ÄÜ¸ÃÖĞ¶ÏÍ¨µÀ */
-	NVIC_Init(&NVIC_InitStructure);	/* Ğ´Èë NVIC£¬ÕıÊ½´ò¿ªÖĞ¶Ï */
+	NVIC_InitStructure.NVIC_IRQChannel = TIM7_IRQn;//é€‰æ‹©ä¸­æ–­ç¼–å·
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;	/* æŠ¢å ä¼˜å…ˆçº§ 1ï¼ˆä½äº TIM6ï¼‰ */
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;	/* å­ä¼˜å…ˆçº§ 1 */
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;	/* ä½¿èƒ½è¯¥ä¸­æ–­é€šé“ */
+	NVIC_Init(&NVIC_InitStructure);	/* å†™å…¥ NVICï¼Œæ­£å¼æ‰“å¼€ä¸­æ–­ */
 
-	//¿ªÆô¶¨Ê±Æ÷ÖĞ¶Ï--¡·¸üĞÂÖĞ¶Ï
+	//å¼€å¯å®šæ—¶å™¨ä¸­æ–­--ã€‹æ›´æ–°ä¸­æ–­
 	TIM_ITConfig(TIM7, TIM_IT_Update, ENABLE);
 
-	//Æô¶¯¶¨Ê±Æ÷7
+	//å¯åŠ¨å®šæ—¶å™¨7
 	TIM_Cmd(TIM7, ENABLE);
 }

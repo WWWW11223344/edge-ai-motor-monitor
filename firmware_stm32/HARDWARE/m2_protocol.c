@@ -1,456 +1,456 @@
 /************************************************************
-  Copyright (C), 2026, ÍôÏÍÔÆ
+  Copyright (C), 2026, æ±ªè´¤äº‘
   FileName:    m2_protocol.c
-  Author:      ÍôÏÍÔÆ
+  Author:      æ±ªè´¤äº‘
   Version:     1.0
   Date:        2026-10-05
-  Description: M2 ¶ş½øÖÆÒ£²âĞ­ÒéµÄ±à½âÂëÊµÏÖ£¬STM32 Óë D1 mini ¹²ÓÃÍ¬Ò»Ì×Ëã·¨¡£
-               Ò»Ö¡¹Ì¶¨ 42 ×Ö½Ú£º2 ×Ö½ÚÖ¡Í·(0xA5 0x5A)¡¢°æ±¾¡¢ÔØºÉ³¤¶È¡¢
-               Ö¡ĞòºÅ¡¢¿ª»úºÁÃë¡¢µµÎ»¡¢Õ¼¿Õ±È¡¢ÓĞĞ§Î»¡¢AI ×´Ì¬¡¢
-                6 ¸ö int32 ²âÁ¿Öµ£¨µçÁ÷mA / X,Y,Z¼ÓËÙ¶Èmg / ×ªËÙx10 / µçÑ¹mV£©¡¢2 ×Ö½Ú CRC¡£
-               ¼ÓËÙ¶ÈÈı²Û×Ô 2026-10-19 Æğ²»ÔÙĞ´Èë£¨MPU6050 ÒÑÕª³ı£©£¬²ÛÎ»±£ÁôÒÔ¼æÈİÖ¡¸ñÊ½¡£
-               CRC ¸²¸Ç×Ô°æ±¾×Ö¶ÎÆğµÄ 38 ×Ö½Ú£¬²»º¬Ö¡Í·Óë CRC ×ÔÉí¡£
-               ½ÓÊÕ¶ËÒÔ¡¸ÊÕÂú 42 ×Ö½Ú¡¹ÎªÇ°ÌáÇĞÖ¡£¬¹ÊÖ¡³¤²»¿É±ä¡£
+  Description: M2 äºŒè¿›åˆ¶é¥æµ‹åè®®çš„ç¼–è§£ç å®ç°ï¼ŒSTM32 ä¸ D1 mini å…±ç”¨åŒä¸€å¥—ç®—æ³•ã€‚
+               ä¸€å¸§å›ºå®š 42 å­—èŠ‚ï¼š2 å­—èŠ‚å¸§å¤´(0xA5 0x5A)ã€ç‰ˆæœ¬ã€è½½è·é•¿åº¦ã€
+               å¸§åºå·ã€å¼€æœºæ¯«ç§’ã€æ¡£ä½ã€å ç©ºæ¯”ã€æœ‰æ•ˆä½ã€AI çŠ¶æ€ã€
+                6 ä¸ª int32 æµ‹é‡å€¼ï¼ˆç”µæµmA / X,Y,ZåŠ é€Ÿåº¦mg / è½¬é€Ÿx10 / ç”µå‹mVï¼‰ã€2 å­—èŠ‚ CRCã€‚
+               åŠ é€Ÿåº¦ä¸‰æ§½è‡ª 2026-10-19 èµ·ä¸å†å†™å…¥ï¼ˆMPU6050 å·²æ‘˜é™¤ï¼‰ï¼Œæ§½ä½ä¿ç•™ä»¥å…¼å®¹å¸§æ ¼å¼ã€‚
+               CRC è¦†ç›–è‡ªç‰ˆæœ¬å­—æ®µèµ·çš„ 38 å­—èŠ‚ï¼Œä¸å«å¸§å¤´ä¸ CRC è‡ªèº«ã€‚
+               æ¥æ”¶ç«¯ä»¥ã€Œæ”¶æ»¡ 42 å­—èŠ‚ã€ä¸ºå‰æåˆ‡å¸§ï¼Œæ•…å¸§é•¿ä¸å¯å˜ã€‚
   Function List:
-    1. put_u32()/get_u32()/put_i32()/get_i32()  Ğ¡¶Ë×Ö½ÚĞò¶ÁĞ´
-    2. m2_crc()        ¼ÆËã CCITT-FALSE Ğ£ÑéÖµ
-    3. m2_scale()      ¸¡µã°´ÏµÊı×ªÕûÊı£¨º¬Òç³ö±£»¤£©
-    4. m2_encode()     M2Frame ´ò°üÎª 42 ×Ö½Ú
-    5. m2_decode()     42 ×Ö½Ú»¹Ô­Îª M2Frame
-    6. m2_feed()       Öğ×Ö½Ú½ÓÊÕ×´Ì¬»ú
-    7. m2_link()       Á´Â·×´Ì¬ÅĞ¶¨
+    1. put_u32()/get_u32()/put_i32()/get_i32()  å°ç«¯å­—èŠ‚åºè¯»å†™
+    2. m2_crc()        è®¡ç®— CCITT-FALSE æ ¡éªŒå€¼
+    3. m2_scale()      æµ®ç‚¹æŒ‰ç³»æ•°è½¬æ•´æ•°ï¼ˆå«æº¢å‡ºä¿æŠ¤ï¼‰
+    4. m2_encode()     M2Frame æ‰“åŒ…ä¸º 42 å­—èŠ‚
+    5. m2_decode()     42 å­—èŠ‚è¿˜åŸä¸º M2Frame
+    6. m2_feed()       é€å­—èŠ‚æ¥æ”¶çŠ¶æ€æœº
+    7. m2_link()       é“¾è·¯çŠ¶æ€åˆ¤å®š
   History:
     <author>   <time>      <version>   <desc>
-    ÍôÏÍÔÆ     2026-10-16    1.0         ´´½¨ÎÄ¼ş²¢°´»ªÎª¹æ·¶²¹³ä×¢ÊÍ
+    æ±ªè´¤äº‘     2026-10-16    1.0         åˆ›å»ºæ–‡ä»¶å¹¶æŒ‰åä¸ºè§„èŒƒè¡¥å……æ³¨é‡Š
 ***********************************************************/
-/* 2026-10-05£º¶¨³¤£¨ÓĞ½ç£©µÄ M2 ±à½âÂëÆ÷£»ÎŞĞ§×Ö¶Î¿¿ÓĞĞ§Î»ÑÚÂë±£³Ö¡¸ÎŞĞ§¡¹¡£ */
-#include "m2_protocol.h"  /* Ğ­Òé³£Á¿Óë½á¹¹Ìå¶¨Òå */
+/* 2026-10-05ï¼šå®šé•¿ï¼ˆæœ‰ç•Œï¼‰çš„ M2 ç¼–è§£ç å™¨ï¼›æ— æ•ˆå­—æ®µé æœ‰æ•ˆä½æ©ç ä¿æŒã€Œæ— æ•ˆã€ã€‚ */
+#include "m2_protocol.h"  /* åè®®å¸¸é‡ä¸ç»“æ„ä½“å®šä¹‰ */
 
 /*-----------------------------------------------------------
   Function:      put_u32
-  Description:   °Ñ 32 Î»ÎŞ·ûºÅÕûÊı°´Ğ¡¶ËË³ĞòĞ´Èë 4 ¸ö×Ö½Ú£¨µÍ×Ö½ÚÔÚÇ°£©¡£
-  Calls:         ÎŞ
-  Called By:     put_i32()¡¢m2_encode()
-  Input:         out ¡ª¡ª 4 ×Ö½Ú»º³åÇøÊ×µØÖ·£»value ¡ª¡ª ´ıĞ´ÈëµÄÊıÖµ
-  Output:        out Ö¸ÏòµÄ 4 ¸ö×Ö½Ú
-  Return:        ÎŞ
-  Others:        ÊÖ¹¤²ğ×Ö½ÚÊ¹×Ö½ÚĞòÍêÈ«ÓÉ´úÂë¾ö¶¨£¬²»ÒÀÀµ±àÒëÆ÷ÓëÆ½Ì¨¡£
+  Description:   æŠŠ 32 ä½æ— ç¬¦å·æ•´æ•°æŒ‰å°ç«¯é¡ºåºå†™å…¥ 4 ä¸ªå­—èŠ‚ï¼ˆä½å­—èŠ‚åœ¨å‰ï¼‰ã€‚
+  Calls:         æ— 
+  Called By:     put_i32()ã€m2_encode()
+  Input:         out â€”â€” 4 å­—èŠ‚ç¼“å†²åŒºé¦–åœ°å€ï¼›value â€”â€” å¾…å†™å…¥çš„æ•°å€¼
+  Output:        out æŒ‡å‘çš„ 4 ä¸ªå­—èŠ‚
+  Return:        æ— 
+  Others:        æ‰‹å·¥æ‹†å­—èŠ‚ä½¿å­—èŠ‚åºå®Œå…¨ç”±ä»£ç å†³å®šï¼Œä¸ä¾èµ–ç¼–è¯‘å™¨ä¸å¹³å°ã€‚
 -----------------------------------------------------------*/
 static void put_u32(uint8_t *out, uint32_t value)
 {
-    out[0] = (uint8_t)value;  /* ×îµÍ×Ö½Ú */
-    out[1] = (uint8_t)(value >> 8);  /* ´ÎµÍ×Ö½Ú */
-    out[2] = (uint8_t)(value >> 16);  /* ´Î¸ß×Ö½Ú */
-    out[3] = (uint8_t)(value >> 24);  /* ×î¸ß×Ö½Ú */
+    out[0] = (uint8_t)value;  /* æœ€ä½å­—èŠ‚ */
+    out[1] = (uint8_t)(value >> 8);  /* æ¬¡ä½å­—èŠ‚ */
+    out[2] = (uint8_t)(value >> 16);  /* æ¬¡é«˜å­—èŠ‚ */
+    out[3] = (uint8_t)(value >> 24);  /* æœ€é«˜å­—èŠ‚ */
 }
 
 /*-----------------------------------------------------------
   Function:      get_u32
-  Description:   °Ñ 4 ¸öĞ¡¶Ë×Ö½ÚÆ´»Ø 32 Î»ÎŞ·ûºÅÕûÊı¡£
-  Calls:         ÎŞ
-  Called By:     get_i32()¡¢m2_decode_reason()
-  Input:         in ¡ª¡ª Ö¸Ïò 4 ¸ö×Ö½Ú
-  Output:        ÎŞ
-  Return:        Æ´×°ºóµÄ 32 Î»ÊıÖµ
-  Others:        Ã¿´ÎÒÆÎ»Ç°±ØĞëÏÈ×ª³É uint32_t£¬·ñÔò uint8_t ×óÒÆ 16/24 Î»»á¶ªÊ§¸ßÎ»¡£
+  Description:   æŠŠ 4 ä¸ªå°ç«¯å­—èŠ‚æ‹¼å› 32 ä½æ— ç¬¦å·æ•´æ•°ã€‚
+  Calls:         æ— 
+  Called By:     get_i32()ã€m2_decode_reason()
+  Input:         in â€”â€” æŒ‡å‘ 4 ä¸ªå­—èŠ‚
+  Output:        æ— 
+  Return:        æ‹¼è£…åçš„ 32 ä½æ•°å€¼
+  Others:        æ¯æ¬¡ç§»ä½å‰å¿…é¡»å…ˆè½¬æˆ uint32_tï¼Œå¦åˆ™ uint8_t å·¦ç§» 16/24 ä½ä¼šä¸¢å¤±é«˜ä½ã€‚
 -----------------------------------------------------------*/
 static uint32_t get_u32(const uint8_t *in)
 {
-    return (uint32_t)in[0] |  /* ×îµÍ×Ö½Ú */
-           ((uint32_t)in[1] << 8) |  /* ´ÎµÍ×Ö½Ú */
-           ((uint32_t)in[2] << 16) |  /* ´Î¸ß×Ö½Ú */
-           ((uint32_t)in[3] << 24);  /* ×î¸ß×Ö½Ú */
+    return (uint32_t)in[0] |  /* æœ€ä½å­—èŠ‚ */
+           ((uint32_t)in[1] << 8) |  /* æ¬¡ä½å­—èŠ‚ */
+           ((uint32_t)in[2] << 16) |  /* æ¬¡é«˜å­—èŠ‚ */
+           ((uint32_t)in[3] << 24);  /* æœ€é«˜å­—èŠ‚ */
 }
 
 /*-----------------------------------------------------------
   Function:      put_i32
-  Description:   °Ñ 32 Î»ÓĞ·ûºÅÕûÊı°´Ğ¡¶ËĞ´Èë 4 ¸ö×Ö½Ú£¬Ö±½Ó¸´ÓÃÎŞ·ûºÅ°æ±¾¡£
+  Description:   æŠŠ 32 ä½æœ‰ç¬¦å·æ•´æ•°æŒ‰å°ç«¯å†™å…¥ 4 ä¸ªå­—èŠ‚ï¼Œç›´æ¥å¤ç”¨æ— ç¬¦å·ç‰ˆæœ¬ã€‚
   Calls:         put_u32()
   Called By:     m2_encode()
-  Input:         out ¡ª¡ª 4 ×Ö½Ú»º³åÇø£»value ¡ª¡ª ´ıĞ´ÈëµÄÓĞ·ûºÅÊıÖµ
-  Output:        out Ö¸ÏòµÄ 4 ¸ö×Ö½Ú
-  Return:        ÎŞ
-  Others:        ²¹Âë±íÊ¾ÏÂÓĞ·ûºÅÓëÎŞ·ûºÅÎ»Ä£Ê½ÏàÍ¬£¬¿ÉÖ±½Ó×ªÎŞ·ûºÅ´¦Àí¡£
+  Input:         out â€”â€” 4 å­—èŠ‚ç¼“å†²åŒºï¼›value â€”â€” å¾…å†™å…¥çš„æœ‰ç¬¦å·æ•°å€¼
+  Output:        out æŒ‡å‘çš„ 4 ä¸ªå­—èŠ‚
+  Return:        æ— 
+  Others:        è¡¥ç è¡¨ç¤ºä¸‹æœ‰ç¬¦å·ä¸æ— ç¬¦å·ä½æ¨¡å¼ç›¸åŒï¼Œå¯ç›´æ¥è½¬æ— ç¬¦å·å¤„ç†ã€‚
 -----------------------------------------------------------*/
 
 static void put_i32(uint8_t *out, int32_t value)
 {
-    put_u32(out, (uint32_t)value);  /* ²¹ÂëÎ»Ä£Ê½ÏàÍ¬£¬Ö±½Ó×ªÎŞ·ûºÅ */
+    put_u32(out, (uint32_t)value);  /* è¡¥ç ä½æ¨¡å¼ç›¸åŒï¼Œç›´æ¥è½¬æ— ç¬¦å· */
 }
 
 /*-----------------------------------------------------------
   Function:      get_i32
-  Description:   °Ñ 4 ¸öĞ¡¶Ë×Ö½ÚÆ´»Ø 32 Î»ÓĞ·ûºÅÕûÊı£¬Ö±½Ó¸´ÓÃÎŞ·ûºÅ°æ±¾¡£
+  Description:   æŠŠ 4 ä¸ªå°ç«¯å­—èŠ‚æ‹¼å› 32 ä½æœ‰ç¬¦å·æ•´æ•°ï¼Œç›´æ¥å¤ç”¨æ— ç¬¦å·ç‰ˆæœ¬ã€‚
   Calls:         get_u32()
   Called By:     m2_decode_reason()
-  Input:         in ¡ª¡ª Ö¸Ïò 4 ¸ö×Ö½Ú
-  Output:        ÎŞ
-  Return:        Æ´×°ºóµÄ 32 Î»ÓĞ·ûºÅÊıÖµ
-  Others:        ²¹Âë±íÊ¾ÏÂ¿ÉÖ±½ÓÓÉÎŞ·ûºÅ½á¹ûÇ¿ÖÆ×ª»»µÃµ½¡£
+  Input:         in â€”â€” æŒ‡å‘ 4 ä¸ªå­—èŠ‚
+  Output:        æ— 
+  Return:        æ‹¼è£…åçš„ 32 ä½æœ‰ç¬¦å·æ•°å€¼
+  Others:        è¡¥ç è¡¨ç¤ºä¸‹å¯ç›´æ¥ç”±æ— ç¬¦å·ç»“æœå¼ºåˆ¶è½¬æ¢å¾—åˆ°ã€‚
 -----------------------------------------------------------*/
 
 static int32_t get_i32(const uint8_t *in)
 {
-    return (int32_t)get_u32(in);  /* ²¹ÂëÎ»Ä£Ê½ÏàÍ¬£¬Ö±½Ó×ªÓĞ·ûºÅ */
+    return (int32_t)get_u32(in);  /* è¡¥ç ä½æ¨¡å¼ç›¸åŒï¼Œç›´æ¥è½¬æœ‰ç¬¦å· */
 }
 
 /*-----------------------------------------------------------
   Function:      m2_crc
-  Description:   ¼ÆËã CRC-CCITT-FALSE Ğ£ÑéÖµ£¨¶àÏîÊ½ 0x1021¡¢³õÖµ 0xFFFF£©¡£
-  Calls:         ÎŞ
-  Called By:     m2_encode()¡¢m2_decode_reason()
-  Input:         data ¡ª¡ª Êı¾İÊ×µØÖ·£»length ¡ª¡ª ²ÎÓë¼ÆËãµÄ×Ö½ÚÊı
-  Output:        ÎŞ
-  Return:        16 Î»Ğ£ÑéÖµ£»data Îª¿ÕÖ¸ÕëÊ±·µ»Ø³õÖµ 0xFFFF
-  Others:        Ğ£Ñé·¶Î§Îª°æ±¾×Ö¶ÎÆğ 38 ×Ö½Ú£¬²»º¬Ö¡Í·ÓëĞ£ÑéÖµ±¾Éí¡£
+  Description:   è®¡ç®— CRC-CCITT-FALSE æ ¡éªŒå€¼ï¼ˆå¤šé¡¹å¼ 0x1021ã€åˆå€¼ 0xFFFFï¼‰ã€‚
+  Calls:         æ— 
+  Called By:     m2_encode()ã€m2_decode_reason()
+  Input:         data â€”â€” æ•°æ®é¦–åœ°å€ï¼›length â€”â€” å‚ä¸è®¡ç®—çš„å­—èŠ‚æ•°
+  Output:        æ— 
+  Return:        16 ä½æ ¡éªŒå€¼ï¼›data ä¸ºç©ºæŒ‡é’ˆæ—¶è¿”å›åˆå€¼ 0xFFFF
+  Others:        æ ¡éªŒèŒƒå›´ä¸ºç‰ˆæœ¬å­—æ®µèµ· 38 å­—èŠ‚ï¼Œä¸å«å¸§å¤´ä¸æ ¡éªŒå€¼æœ¬èº«ã€‚
 -----------------------------------------------------------*/
 uint16_t m2_crc(const uint8_t *data, size_t length)
 {
-    uint16_t crc = 0xFFFFU;  /* CCITT-FALSE ³õÖµ */
-    size_t i;  /* ×Ö½ÚÏÂ±ê */
-    unsigned bit;  /* Î»ÏÂ±ê */
+    uint16_t crc = 0xFFFFU;  /* CCITT-FALSE åˆå€¼ */
+    size_t i;  /* å­—èŠ‚ä¸‹æ ‡ */
+    unsigned bit;  /* ä½ä¸‹æ ‡ */
 
-    if (data == 0)  /* ¿ÕÖ¸Õë */
+    if (data == 0)  /* ç©ºæŒ‡é’ˆ */
     {
-        return crc;  /* ·µ»Ø³õÖµ */
+        return crc;  /* è¿”å›åˆå€¼ */
     }
-    for (i = 0U; i < length; ++i)  /* Öğ×Ö½Ú´¦Àí */
+    for (i = 0U; i < length; ++i)  /* é€å­—èŠ‚å¤„ç† */
     {
-        crc ^= (uint16_t)((uint16_t)data[i] << 8);  /* µ±Ç°×Ö½ÚÒì»òµ½¸ß 8 Î» */
-        for (bit = 0U; bit < 8U; ++bit)  /* ÖğÎ»´¦Àí */
+        crc ^= (uint16_t)((uint16_t)data[i] << 8);  /* å½“å‰å­—èŠ‚å¼‚æˆ–åˆ°é«˜ 8 ä½ */
+        for (bit = 0U; bit < 8U; ++bit)  /* é€ä½å¤„ç† */
         {
-            crc = (uint16_t)(((crc & 0x8000U) != 0U) ?  /* ×î¸ßÎ»Îª 1 Ê± */
-                (((uint32_t)crc << 1) ^ 0x1021U) : ((uint32_t)crc << 1));  /* ×óÒÆºóÒì»ò¶àÏîÊ½ 0x1021 */
+            crc = (uint16_t)(((crc & 0x8000U) != 0U) ?  /* æœ€é«˜ä½ä¸º 1 æ—¶ */
+                (((uint32_t)crc << 1) ^ 0x1021U) : ((uint32_t)crc << 1));  /* å·¦ç§»åå¼‚æˆ–å¤šé¡¹å¼ 0x1021 */
         }
     }
-    return crc;  /* ·µ»Ø 16 Î»Ğ£ÑéÖµ */
+    return crc;  /* è¿”å› 16 ä½æ ¡éªŒå€¼ */
 }
 
 /*-----------------------------------------------------------
   Function:      m2_scale
-  Description:   °Ñ¸¡µã²âÁ¿Öµ³ËÒÔ¸ø¶¨ÏµÊı²¢ËÄÉáÎåÈëÎªÕûÊı£¬ÓÃÓÚ°´¹Ì¶¨±¶Êı
-                 °ÑÎïÀíÁ¿Ñ¹³ÉÕûÊıĞ´ÈëĞ­Òé×Ö¶Î£¨ÈçµçÁ÷ A ×ª mA ÓÃ 1000£©¡£
-  Calls:         ÎŞ
-  Called By:     telemetry.c µÄ telemetry_poll()
-  Input:         value ¡ª¡ª ´ı×ª»»µÄ¸¡µãÖµ£»factor ¡ª¡ª ·Å´ó±¶Êı£¨²»ÄÜÎª 0£©
-  Output:        scaled ¡ª¡ª ×ª»»½á¹û£¬½öÔÚ·µ»Ø 1 Ê±ÓĞĞ§
-  Return:        1 = ³É¹¦£»0 = ²ÎÊı·Ç·¨»ò½á¹û³¬³ö int32 ·¶Î§
-  Others:        NaN ÓëÎŞÇî´óÒò·¶Î§ÅĞ¶Ï²»³ÉÁ¢¶ø±»¾Ü¾ø£¬µ÷ÓÃ·½¾İ´Ë²»ÖÃÓĞĞ§Î»¡£
+  Description:   æŠŠæµ®ç‚¹æµ‹é‡å€¼ä¹˜ä»¥ç»™å®šç³»æ•°å¹¶å››èˆäº”å…¥ä¸ºæ•´æ•°ï¼Œç”¨äºæŒ‰å›ºå®šå€æ•°
+                 æŠŠç‰©ç†é‡å‹æˆæ•´æ•°å†™å…¥åè®®å­—æ®µï¼ˆå¦‚ç”µæµ A è½¬ mA ç”¨ 1000ï¼‰ã€‚
+  Calls:         æ— 
+  Called By:     telemetry.c çš„ telemetry_poll()
+  Input:         value â€”â€” å¾…è½¬æ¢çš„æµ®ç‚¹å€¼ï¼›factor â€”â€” æ”¾å¤§å€æ•°ï¼ˆä¸èƒ½ä¸º 0ï¼‰
+  Output:        scaled â€”â€” è½¬æ¢ç»“æœï¼Œä»…åœ¨è¿”å› 1 æ—¶æœ‰æ•ˆ
+  Return:        1 = æˆåŠŸï¼›0 = å‚æ•°éæ³•æˆ–ç»“æœè¶…å‡º int32 èŒƒå›´
+  Others:        NaN ä¸æ— ç©·å¤§å› èŒƒå›´åˆ¤æ–­ä¸æˆç«‹è€Œè¢«æ‹’ç»ï¼Œè°ƒç”¨æ–¹æ®æ­¤ä¸ç½®æœ‰æ•ˆä½ã€‚
 -----------------------------------------------------------*/
-/* ÔÚ°ÑËõ·Å½á¹û×ª³ÉÕûÊıÖ®Ç°£¬ÏÈ¾Ü¾ø NaN/ÎŞÇî´óÓëÕûÊıÒç³ö¡£ */
+/* åœ¨æŠŠç¼©æ”¾ç»“æœè½¬æˆæ•´æ•°ä¹‹å‰ï¼Œå…ˆæ‹’ç» NaN/æ— ç©·å¤§ä¸æ•´æ•°æº¢å‡ºã€‚ */
 bool m2_scale(float value, uint32_t factor, int32_t *scaled)
 {
-    double product = (double)value * (double)factor;  /* ÓÃ double ³Ë£¬±ÜÃâÌáÇ°Òç³ö */
+    double product = (double)value * (double)factor;  /* ç”¨ double ä¹˜ï¼Œé¿å…æå‰æº¢å‡º */
 
-    if (scaled == 0 || factor == 0U ||  /* Êä³öÖ¸ÕëÎª¿Õ»ò±¶ÊıÎª 0 */
-        !(product > -2147483648.5 && product < 2147483647.5))  /* »òÔ½½ç/NaN£¨±È½Ï²»³ÉÁ¢¼´¾Ü¾ø£© */
+    if (scaled == 0 || factor == 0U ||  /* è¾“å‡ºæŒ‡é’ˆä¸ºç©ºæˆ–å€æ•°ä¸º 0 */
+        !(product > -2147483648.5 && product < 2147483647.5))  /* æˆ–è¶Šç•Œ/NaNï¼ˆæ¯”è¾ƒä¸æˆç«‹å³æ‹’ç»ï¼‰ */
     {
-        return false;  /* ×ª»»Ê§°Ü */
+        return false;  /* è½¬æ¢å¤±è´¥ */
     }
-    product += product < 0.0 ? -0.5 : 0.5;  /* ËÄÉáÎåÈë£¨Ô¶ÀëÁã£© */
-    *scaled = (int32_t)product;  /* Ğ´»ØÕûÊı½á¹û */
-    return true;  /* ×ª»»³É¹¦ */
+    product += product < 0.0 ? -0.5 : 0.5;  /* å››èˆäº”å…¥ï¼ˆè¿œç¦»é›¶ï¼‰ */
+    *scaled = (int32_t)product;  /* å†™å›æ•´æ•°ç»“æœ */
+    return true;  /* è½¬æ¢æˆåŠŸ */
 }
 
 /*-----------------------------------------------------------
   Function:      m2_encode
-  Description:   °Ñ M2Frame ´ò°ü³É 42 ×Ö½Ú¶¨³¤Ö¡²¢¸½¼Ó CRC Ğ£ÑéÖµ¡£
-  Calls:         put_u32()¡¢put_i32()¡¢m2_crc()
-  Called By:     telemetry.c µÄ telemetry_poll()
-  Input:         frame ¡ª¡ª ´ı´ò°üÊı¾İ£»buffer ¡ª¡ª Êä³ö»º³å£»capacity ¡ª¡ª »º³åÈİÁ¿
-  Output:        buffer ÖĞĞ´ÈëÍêÕû 42 ×Ö½ÚÖ¡
-  Return:        ³É¹¦·µ»Ø M2_FRAME_SIZE(42)£»²ÎÊı·Ç·¨»òÊıÖµÔ½½ç·µ»Ø 0
-  Others:        Èë²ÎÌå¼ìÔÚ±àÂëÇ°Íê³É£¬Ô½½çÊı¾İÒ»ÂÉ¾Ü·¢£¬±ÜÃâËÍ³öÎ¥¹æÖ¡¡£
+  Description:   æŠŠ M2Frame æ‰“åŒ…æˆ 42 å­—èŠ‚å®šé•¿å¸§å¹¶é™„åŠ  CRC æ ¡éªŒå€¼ã€‚
+  Calls:         put_u32()ã€put_i32()ã€m2_crc()
+  Called By:     telemetry.c çš„ telemetry_poll()
+  Input:         frame â€”â€” å¾…æ‰“åŒ…æ•°æ®ï¼›buffer â€”â€” è¾“å‡ºç¼“å†²ï¼›capacity â€”â€” ç¼“å†²å®¹é‡
+  Output:        buffer ä¸­å†™å…¥å®Œæ•´ 42 å­—èŠ‚å¸§
+  Return:        æˆåŠŸè¿”å› M2_FRAME_SIZE(42)ï¼›å‚æ•°éæ³•æˆ–æ•°å€¼è¶Šç•Œè¿”å› 0
+  Others:        å…¥å‚ä½“æ£€åœ¨ç¼–ç å‰å®Œæˆï¼Œè¶Šç•Œæ•°æ®ä¸€å¾‹æ‹’å‘ï¼Œé¿å…é€å‡ºè¿è§„å¸§ã€‚
 -----------------------------------------------------------*/
-/* ¶¨³¤±àÂëÈÃÃ¿Ö¡µÄ UART Õ¼ÓÃÊ±¼äºã¶¨£¬100 Ö¡/ÃëÒ²ÎÈÎÈ¿¸µÃ×¡¡£ */
+/* å®šé•¿ç¼–ç è®©æ¯å¸§çš„ UART å ç”¨æ—¶é—´æ’å®šï¼Œ100 å¸§/ç§’ä¹Ÿç¨³ç¨³æ‰›å¾—ä½ã€‚ */
 size_t m2_encode(const M2Frame *frame, uint8_t *buffer, size_t capacity)
 {
-    uint16_t crc;  /* Ğ£ÑéÖµ */
-    unsigned i;  /* ²âÁ¿ÖµÏÂ±ê */
+    uint16_t crc;  /* æ ¡éªŒå€¼ */
+    unsigned i;  /* æµ‹é‡å€¼ä¸‹æ ‡ */
 
-    if (frame == 0 || buffer == 0 || capacity < M2_FRAME_SIZE ||  /* Ö¸ÕëÓëÈİÁ¿¼ì²é */
-        frame->level > 4U || frame->duty > 88U ||  /* µµÎ»/Õ¼¿Õ±ÈÔ½½ç */
-        frame->validMask > M2_VALID_ALL || frame->aiState > M2_AI_STATE_MAX)  /* ÓĞĞ§Î» / AI ×´Ì¬Ô½½ç */
+    if (frame == 0 || buffer == 0 || capacity < M2_FRAME_SIZE ||  /* æŒ‡é’ˆä¸å®¹é‡æ£€æŸ¥ */
+        frame->level > 4U || frame->duty > 88U ||  /* æ¡£ä½/å ç©ºæ¯”è¶Šç•Œ */
+        frame->validMask > M2_VALID_ALL || frame->aiState > M2_AI_STATE_MAX)  /* æœ‰æ•ˆä½ / AI çŠ¶æ€è¶Šç•Œ */
     {
-        return 0U;  /* ¾Ü·¢£¬·µ»Ø³¤¶È 0 */
+        return 0U;  /* æ‹’å‘ï¼Œè¿”å›é•¿åº¦ 0 */
     }
 
-    buffer[0] = M2_SYNC0;  /* Ö¡Í· 0xA5 */
-    buffer[1] = M2_SYNC1;  /* Ö¡Í· 0x5A */
-    buffer[2] = M2_VERSION;  /* Ğ­Òé°æ±¾ */
-    buffer[3] = M2_PAYLOAD_SIZE;  /* ÔØºÉ³¤¶È 36 */
-    put_u32(&buffer[4], frame->seq);  /* [4..7] Ö¡ĞòºÅ */
-    put_u32(&buffer[8], frame->uptimeMs);  /* [8..11] ¿ª»úºÁÃë */
-    buffer[12] = frame->level;  /* [12] µµÎ» */
-    buffer[13] = frame->duty;  /* [13] Õ¼¿Õ±È */
-    buffer[14] = frame->validMask;  /* [14] ÓĞĞ§Î» */
-    buffer[15] = frame->aiState;  /* [15] AI ×´Ì¬ */
-    for (i = 0U; i < 6U; ++i)  /* [16..39] 6 ¸ö²âÁ¿Öµ */
+    buffer[0] = M2_SYNC0;  /* å¸§å¤´ 0xA5 */
+    buffer[1] = M2_SYNC1;  /* å¸§å¤´ 0x5A */
+    buffer[2] = M2_VERSION;  /* åè®®ç‰ˆæœ¬ */
+    buffer[3] = M2_PAYLOAD_SIZE;  /* è½½è·é•¿åº¦ 36 */
+    put_u32(&buffer[4], frame->seq);  /* [4..7] å¸§åºå· */
+    put_u32(&buffer[8], frame->uptimeMs);  /* [8..11] å¼€æœºæ¯«ç§’ */
+    buffer[12] = frame->level;  /* [12] æ¡£ä½ */
+    buffer[13] = frame->duty;  /* [13] å ç©ºæ¯” */
+    buffer[14] = frame->validMask;  /* [14] æœ‰æ•ˆä½ */
+    buffer[15] = frame->aiState;  /* [15] AI çŠ¶æ€ */
+    for (i = 0U; i < 6U; ++i)  /* [16..39] 6 ä¸ªæµ‹é‡å€¼ */
     {
-        put_i32(&buffer[16U + 4U * i], frame->value[i]);  /* Ã¿¸öÕ¼ 4 ×Ö½Ú£¬Ğ¡¶Ë */
+        put_i32(&buffer[16U + 4U * i], frame->value[i]);  /* æ¯ä¸ªå  4 å­—èŠ‚ï¼Œå°ç«¯ */
     }
-    crc = m2_crc(&buffer[2], 38U);  /* CRC ¸²¸Ç¡¸°æ±¾¡¹Æğ 38 ×Ö½Ú */
-    buffer[40] = (uint8_t)crc;  /* CRC µÍ×Ö½Ú */
-    buffer[41] = (uint8_t)(crc >> 8);  /* CRC ¸ß×Ö½Ú */
-    return M2_FRAME_SIZE;  /* ·µ»ØÕûÖ¡³¤¶È 42 */
+    crc = m2_crc(&buffer[2], 38U);  /* CRC è¦†ç›–ã€Œç‰ˆæœ¬ã€èµ· 38 å­—èŠ‚ */
+    buffer[40] = (uint8_t)crc;  /* CRC ä½å­—èŠ‚ */
+    buffer[41] = (uint8_t)(crc >> 8);  /* CRC é«˜å­—èŠ‚ */
+    return M2_FRAME_SIZE;  /* è¿”å›æ•´å¸§é•¿åº¦ 42 */
 }
 
 /*-----------------------------------------------------------
   Function:      m2_decode_reason
-  Description:   ÑÏ¸ñ½âÎöÒ»Ö¡Êı¾İ£¬²¢·µ»Ø¾ßÌåµÄÊ§°ÜÔ­Òò¹©ÉÏ²ã·ÖÀà¼ÆÊı¡£
-  Calls:         get_u32()¡¢get_i32()¡¢m2_crc()
-  Called By:     m2_decode()¡¢m2_feed()
-  Input:         data ¡ª¡ª 42 ×Ö½ÚÖ¡£»length ¡ª¡ª ³¤¶È£¨±ØĞëµÈÓÚ 42£©
-  Output:        frame ¡ª¡ª ½âÎö½á¹û£¬½öÔÚ·µ»Ø M2_REJECT_NONE Ê±ÓĞĞ§
-  Return:        M2RejectReason Ã¶¾Ù£¨NONE/VERSION/LENGTH/FORMAT/CRC/RANGE/OTHER£©
-  Others:        ¼ì²éË³ĞòÓÉÍâµ½ÄÚ£¬Ê¹Ò»Ö¡Ö»¹éÒòÓÚµÚÒ»²ãÊ§°Ü£¬±ÜÃâ¼ÆÊı»¥ÏàÎÛÈ¾¡£
+  Description:   ä¸¥æ ¼è§£æä¸€å¸§æ•°æ®ï¼Œå¹¶è¿”å›å…·ä½“çš„å¤±è´¥åŸå› ä¾›ä¸Šå±‚åˆ†ç±»è®¡æ•°ã€‚
+  Calls:         get_u32()ã€get_i32()ã€m2_crc()
+  Called By:     m2_decode()ã€m2_feed()
+  Input:         data â€”â€” 42 å­—èŠ‚å¸§ï¼›length â€”â€” é•¿åº¦ï¼ˆå¿…é¡»ç­‰äº 42ï¼‰
+  Output:        frame â€”â€” è§£æç»“æœï¼Œä»…åœ¨è¿”å› M2_REJECT_NONE æ—¶æœ‰æ•ˆ
+  Return:        M2RejectReason æšä¸¾ï¼ˆNONE/VERSION/LENGTH/FORMAT/CRC/RANGE/OTHERï¼‰
+  Others:        æ£€æŸ¥é¡ºåºç”±å¤–åˆ°å†…ï¼Œä½¿ä¸€å¸§åªå½’å› äºç¬¬ä¸€å±‚å¤±è´¥ï¼Œé¿å…è®¡æ•°äº’ç›¸æ±¡æŸ“ã€‚
 -----------------------------------------------------------*/
-/* ÑÏ¸ñ½âÂëÆ÷£ºÏÈ°´¡¸³ÉÖ¡²ã¡¹·ÖÀàÊ§°ÜÔ­Òò£¬ÔÙ×ö CRC Óë·¶Î§¼ì²é¡£ */
+/* ä¸¥æ ¼è§£ç å™¨ï¼šå…ˆæŒ‰ã€Œæˆå¸§å±‚ã€åˆ†ç±»å¤±è´¥åŸå› ï¼Œå†åš CRC ä¸èŒƒå›´æ£€æŸ¥ã€‚ */
 typedef enum {
-    M2_REJECT_NONE = 0,  /* ÎŞ´íÎó */
-    M2_REJECT_VERSION,  /* °æ±¾²»·û */
-    M2_REJECT_LENGTH,  /* ³¤¶È²»·û */
-    M2_REJECT_FORMAT,  /* Ö¡Í·/×Ö¶Î¸ñÊ½´í */
-    M2_REJECT_CRC,  /* CRC Ğ£ÑéÊ§°Ü */
-    M2_REJECT_RANGE,  /* ÊıÖµÔ½½ç */
-    M2_REJECT_OTHER  /* ÆäËüÔ­Òò */
-} M2RejectReason;  /* ¾ÜÊÕÔ­Òò·ÖÀà */
+    M2_REJECT_NONE = 0,  /* æ— é”™è¯¯ */
+    M2_REJECT_VERSION,  /* ç‰ˆæœ¬ä¸ç¬¦ */
+    M2_REJECT_LENGTH,  /* é•¿åº¦ä¸ç¬¦ */
+    M2_REJECT_FORMAT,  /* å¸§å¤´/å­—æ®µæ ¼å¼é”™ */
+    M2_REJECT_CRC,  /* CRC æ ¡éªŒå¤±è´¥ */
+    M2_REJECT_RANGE,  /* æ•°å€¼è¶Šç•Œ */
+    M2_REJECT_OTHER  /* å…¶å®ƒåŸå›  */
+} M2RejectReason;  /* æ‹’æ”¶åŸå› åˆ†ç±» */
 
 static M2RejectReason m2_decode_reason(const uint8_t *data, size_t length, M2Frame *frame)
 {
-    M2Frame parsed;  /* ½âÎö½á¹ûÔİ´æ£¨³É¹¦²Å·¢²¼£© */
-    uint16_t expected;  /* Ö¡ÄÚĞ¯´øµÄ CRC */
-    unsigned i;  /* ²âÁ¿ÖµÏÂ±ê */
+    M2Frame parsed;  /* è§£æç»“æœæš‚å­˜ï¼ˆæˆåŠŸæ‰å‘å¸ƒï¼‰ */
+    uint16_t expected;  /* å¸§å†…æºå¸¦çš„ CRC */
+    unsigned i;  /* æµ‹é‡å€¼ä¸‹æ ‡ */
 
-    /* 2026-10-07£ºÈÃ¾ÜÊÕ¼ÆÊıÖ»¹éÒòµ½µÚÒ»²ãÊ§°Ü£¬±ÜÃâ·ÖÀà»¥ÏàÎÛÈ¾¡£ */
-    if (data == 0 || frame == 0)  /* Ö¸ÕëÎª¿Õ */
+    /* 2026-10-07ï¼šè®©æ‹’æ”¶è®¡æ•°åªå½’å› åˆ°ç¬¬ä¸€å±‚å¤±è´¥ï¼Œé¿å…åˆ†ç±»äº’ç›¸æ±¡æŸ“ã€‚ */
+    if (data == 0 || frame == 0)  /* æŒ‡é’ˆä¸ºç©º */
     {
-        return M2_REJECT_OTHER;  /* ¹éÈë¡¸ÆäËüÔ­Òò¡¹ */
+        return M2_REJECT_OTHER;  /* å½’å…¥ã€Œå…¶å®ƒåŸå› ã€ */
     }
-    if (length != M2_FRAME_SIZE) { return M2_REJECT_LENGTH; }  /* ³¤¶È±ØĞëÕıºÃ 42 */
-    if (data[0] != M2_SYNC0 || data[1] != M2_SYNC1) { return M2_REJECT_FORMAT; }  /* Ö¡Í·Á½¸ö×Ö½Ú±ØĞë¶¼¶Ô */
-    if (data[2] != M2_VERSION) { return M2_REJECT_VERSION; }  /* °æ±¾±ØĞëÆ¥Åä */
-    if (data[3] != M2_PAYLOAD_SIZE) { return M2_REJECT_LENGTH; }  /* ÔØºÉ³¤¶È×Ö¶Î±ØĞëÆ¥Åä */
-    if (data[14] > M2_VALID_ALL || data[15] > M2_AI_STATE_MAX) { return M2_REJECT_FORMAT; }  /* ÓĞĞ§Î» / AI ×´Ì¬Ô½½ç */
-    expected = (uint16_t)data[40] | ((uint16_t)data[41] << 8);  /* Ğ¡¶ËÆ´³öÖ¡ÄÚ CRC */
-    if (m2_crc(&data[2], 38U) != expected)  /* ±¾µØÖØËã CRC ±È¶Ô */
+    if (length != M2_FRAME_SIZE) { return M2_REJECT_LENGTH; }  /* é•¿åº¦å¿…é¡»æ­£å¥½ 42 */
+    if (data[0] != M2_SYNC0 || data[1] != M2_SYNC1) { return M2_REJECT_FORMAT; }  /* å¸§å¤´ä¸¤ä¸ªå­—èŠ‚å¿…é¡»éƒ½å¯¹ */
+    if (data[2] != M2_VERSION) { return M2_REJECT_VERSION; }  /* ç‰ˆæœ¬å¿…é¡»åŒ¹é… */
+    if (data[3] != M2_PAYLOAD_SIZE) { return M2_REJECT_LENGTH; }  /* è½½è·é•¿åº¦å­—æ®µå¿…é¡»åŒ¹é… */
+    if (data[14] > M2_VALID_ALL || data[15] > M2_AI_STATE_MAX) { return M2_REJECT_FORMAT; }  /* æœ‰æ•ˆä½ / AI çŠ¶æ€è¶Šç•Œ */
+    expected = (uint16_t)data[40] | ((uint16_t)data[41] << 8);  /* å°ç«¯æ‹¼å‡ºå¸§å†… CRC */
+    if (m2_crc(&data[2], 38U) != expected)  /* æœ¬åœ°é‡ç®— CRC æ¯”å¯¹ */
     {
-        return M2_REJECT_CRC;  /* ¹éÈë CRC Ê§°Ü */
+        return M2_REJECT_CRC;  /* å½’å…¥ CRC å¤±è´¥ */
     }
 
-    parsed.seq = get_u32(&data[4]);  /* Ö¡ĞòºÅ */
-    parsed.uptimeMs = get_u32(&data[8]);  /* ¿ª»úºÁÃë */
-    parsed.level = data[12];  /* µµÎ» */
-    parsed.duty = data[13];  /* Õ¼¿Õ±È */
-    parsed.aiState = data[15];  /* AI ×´Ì¬ */
-    if (parsed.level > 4U || parsed.duty > 88U)  /* µµÎ» / Õ¼¿Õ±ÈÔ½½ç */
+    parsed.seq = get_u32(&data[4]);  /* å¸§åºå· */
+    parsed.uptimeMs = get_u32(&data[8]);  /* å¼€æœºæ¯«ç§’ */
+    parsed.level = data[12];  /* æ¡£ä½ */
+    parsed.duty = data[13];  /* å ç©ºæ¯” */
+    parsed.aiState = data[15];  /* AI çŠ¶æ€ */
+    if (parsed.level > 4U || parsed.duty > 88U)  /* æ¡£ä½ / å ç©ºæ¯”è¶Šç•Œ */
     {
-        return M2_REJECT_RANGE;  /* ¹éÈëÊıÖµÔ½½ç */
+        return M2_REJECT_RANGE;  /* å½’å…¥æ•°å€¼è¶Šç•Œ */
     }
-    parsed.validMask = data[14];  /* ÓĞĞ§Î» */
-    for (i = 0U; i < 6U; ++i)  /* 6 ¸ö²âÁ¿Öµ */
+    parsed.validMask = data[14];  /* æœ‰æ•ˆä½ */
+    for (i = 0U; i < 6U; ++i)  /* 6 ä¸ªæµ‹é‡å€¼ */
     {
-        parsed.value[i] = get_i32(&data[16U + 4U * i]);  /* Ğ¡¶ËÆ´»Ø int32 */
+        parsed.value[i] = get_i32(&data[16U + 4U * i]);  /* å°ç«¯æ‹¼å› int32 */
     }
-    *frame = parsed;  /* È«²¿¼ì²éÍ¨¹ı²Å·¢²¼½á¹û */
-    return M2_REJECT_NONE;  /* ½âÎö³É¹¦ */
+    *frame = parsed;  /* å…¨éƒ¨æ£€æŸ¥é€šè¿‡æ‰å‘å¸ƒç»“æœ */
+    return M2_REJECT_NONE;  /* è§£ææˆåŠŸ */
 }
 
 /*-----------------------------------------------------------
   Function:      m2_decode
-  Description:   ½âÎöÒ»Ö¡Êı¾İ£¬½ö¸ø³ö³É¹¦»òÊ§°ÜµÄ²¼¶û½á¹û¡£
+  Description:   è§£æä¸€å¸§æ•°æ®ï¼Œä»…ç»™å‡ºæˆåŠŸæˆ–å¤±è´¥çš„å¸ƒå°”ç»“æœã€‚
   Calls:         m2_decode_reason()
-  Called By:     ÎŞ
-  Input:         data ¡ª¡ª 42 ×Ö½ÚÖ¡£»length ¡ª¡ª ³¤¶È
-  Output:        frame ¡ª¡ª ½âÎö½á¹û£¬½öÔÚ·µ»Ø true Ê±ÓĞĞ§
-  Return:        true = ½âÎö³É¹¦£»false = ½âÎöÊ§°Ü
-  Others:        ĞèÒª¾ßÌåÊ§°ÜÔ­ÒòÊ±¸ÄÓÃ m2_decode_reason()¡£
+  Called By:     æ— 
+  Input:         data â€”â€” 42 å­—èŠ‚å¸§ï¼›length â€”â€” é•¿åº¦
+  Output:        frame â€”â€” è§£æç»“æœï¼Œä»…åœ¨è¿”å› true æ—¶æœ‰æ•ˆ
+  Return:        true = è§£ææˆåŠŸï¼›false = è§£æå¤±è´¥
+  Others:        éœ€è¦å…·ä½“å¤±è´¥åŸå› æ—¶æ”¹ç”¨ m2_decode_reason()ã€‚
 -----------------------------------------------------------*/
 bool m2_decode(const uint8_t *data, size_t length, M2Frame *frame)
 {
-    return m2_decode_reason(data, length, frame) == M2_REJECT_NONE;  /* Ö»¿´ÊÇ·ñ³É¹¦£¬²»¹ØĞÄÔ­Òò */
+    return m2_decode_reason(data, length, frame) == M2_REJECT_NONE;  /* åªçœ‹æ˜¯å¦æˆåŠŸï¼Œä¸å…³å¿ƒåŸå›  */
 }
 
 /*-----------------------------------------------------------
   Function:      record_reject
-  Description:   ¼ÇÂ¼Ò»´Î¾ÜÊÕ£º×ÜÊı¼ÓÒ»£¬²¢°´Ô­ÒòÀÛ¼Ó¶ÔÓ¦µÄ·ÖÀà¼ÆÊı¡£
-  Calls:         ÎŞ
-  Called By:     m2_discard()¡¢m2_feed()
-  Input:         receiver ¡ª¡ª ½ÓÊÕÆ÷×´Ì¬£»reason ¡ª¡ª ¾ÜÊÕÔ­Òò
-  Output:        ¸üĞÂ receiver µÄ rejected Óë¸÷·ÖÀà¼ÆÊı
-  Return:        ÎŞ
-  Others:        ÕâĞ©¼ÆÊı×îÖÕ»á³öÏÖÔÚ D1 µÄ /status¡¢/raw Óë USB ×¥°ü±¨¸æÖĞ¡£
+  Description:   è®°å½•ä¸€æ¬¡æ‹’æ”¶ï¼šæ€»æ•°åŠ ä¸€ï¼Œå¹¶æŒ‰åŸå› ç´¯åŠ å¯¹åº”çš„åˆ†ç±»è®¡æ•°ã€‚
+  Calls:         æ— 
+  Called By:     m2_discard()ã€m2_feed()
+  Input:         receiver â€”â€” æ¥æ”¶å™¨çŠ¶æ€ï¼›reason â€”â€” æ‹’æ”¶åŸå› 
+  Output:        æ›´æ–° receiver çš„ rejected ä¸å„åˆ†ç±»è®¡æ•°
+  Return:        æ— 
+  Others:        è¿™äº›è®¡æ•°æœ€ç»ˆä¼šå‡ºç°åœ¨ D1 çš„ /statusã€/raw ä¸ USB æŠ“åŒ…æŠ¥å‘Šä¸­ã€‚
 -----------------------------------------------------------*/
 static void record_reject(M2Receiver *receiver, M2RejectReason reason)
 {
-    if (receiver == 0) { return; }  /* Èë²ÎÎª¿Õ */
-    ++receiver->rejected;  /* ¾ÜÊÕ×ÜÊı¼ÓÒ» */
+    if (receiver == 0) { return; }  /* å…¥å‚ä¸ºç©º */
+    ++receiver->rejected;  /* æ‹’æ”¶æ€»æ•°åŠ ä¸€ */
     switch (reason)
     {
-    case M2_REJECT_VERSION: ++receiver->rejectVersion; break;  /* °æ±¾²»·û */
-    case M2_REJECT_LENGTH: ++receiver->rejectLength; break;  /* ³¤¶È²»·û */
-    case M2_REJECT_FORMAT: ++receiver->rejectFormat; break;  /* ¸ñÊ½´í */
-    case M2_REJECT_CRC: ++receiver->rejectCrc; break;  /* CRC Ê§°Ü */
-    case M2_REJECT_RANGE: ++receiver->rejectRange; break;  /* ÊıÖµÔ½½ç */
-    default: ++receiver->rejectOther; break;  /* ÆäËü */
+    case M2_REJECT_VERSION: ++receiver->rejectVersion; break;  /* ç‰ˆæœ¬ä¸ç¬¦ */
+    case M2_REJECT_LENGTH: ++receiver->rejectLength; break;  /* é•¿åº¦ä¸ç¬¦ */
+    case M2_REJECT_FORMAT: ++receiver->rejectFormat; break;  /* æ ¼å¼é”™ */
+    case M2_REJECT_CRC: ++receiver->rejectCrc; break;  /* CRC å¤±è´¥ */
+    case M2_REJECT_RANGE: ++receiver->rejectRange; break;  /* æ•°å€¼è¶Šç•Œ */
+    default: ++receiver->rejectOther; break;  /* å…¶å®ƒ */
     }
 }
 
 /*-----------------------------------------------------------
   Function:      m2_reset
-  Description:   ¸´Î»ÊÕÖ¡×´Ì¬»ú£¬¶ªÆúÕıÔÚ½ÓÊÕµÄ°ë½ØÖ¡¡£
-  Calls:         ÎŞ
-  Called By:     m2_discard()¡¢m2_feed()
-  Input:         receiver ¡ª¡ª ½ÓÊÕÆ÷×´Ì¬
-  Output:        ÇåÁã used Óë expected
-  Return:        ÎŞ
-  Others:        ²»Çå latest / hasFrame ¼°¸÷¼ÆÊıÆ÷£¬±ÜÃâÒ»´Î¶ªÖ¡µ¼ÖÂÏÔÊ¾¿Õ°×¡£
+  Description:   å¤ä½æ”¶å¸§çŠ¶æ€æœºï¼Œä¸¢å¼ƒæ­£åœ¨æ¥æ”¶çš„åŠæˆªå¸§ã€‚
+  Calls:         æ— 
+  Called By:     m2_discard()ã€m2_feed()
+  Input:         receiver â€”â€” æ¥æ”¶å™¨çŠ¶æ€
+  Output:        æ¸…é›¶ used ä¸ expected
+  Return:        æ— 
+  Others:        ä¸æ¸… latest / hasFrame åŠå„è®¡æ•°å™¨ï¼Œé¿å…ä¸€æ¬¡ä¸¢å¸§å¯¼è‡´æ˜¾ç¤ºç©ºç™½ã€‚
 -----------------------------------------------------------*/
 void m2_reset(M2Receiver *receiver)
 {
-    if (receiver != 0)  /* Èë²ÎÓĞĞ§ */
+    if (receiver != 0)  /* å…¥å‚æœ‰æ•ˆ */
     {
-        receiver->used = 0U;  /* ÒÑÊÕ×Ö½ÚÊıÇåÁã */
-        receiver->expected = 0U;  /* ±¾Ö¡ÆÚÍû³¤¶ÈÇåÁã */
+        receiver->used = 0U;  /* å·²æ”¶å­—èŠ‚æ•°æ¸…é›¶ */
+        receiver->expected = 0U;  /* æœ¬å¸§æœŸæœ›é•¿åº¦æ¸…é›¶ */
     }
 }
 
 /*-----------------------------------------------------------
   Function:      m2_discard
-  Description:   ¶ªÆú°ë½ØÖ¡£¬²¢¼ÇÒ»´Î¡¸ÆäËüÔ­Òò¡¹µÄ¾ÜÊÕ¡£
-  Calls:         m2_reset()¡¢record_reject()
-  Called By:     m2_feed()¡¢½ÓÊÕ¶ËµÄ¿ÕÏĞ³¬Ê±´¦Àí
-  Input:         receiver ¡ª¡ª ½ÓÊÕÆ÷×´Ì¬
-  Output:        Çå¿ÕÊÕÖ¡»º³å
-  Return:        ÎŞ
-  Others:        µäĞÍ´¥·¢£º°ëÖ¡¾²ÖÃ³¬¹ı 30ms ÎŞĞÂ×Ö½Ú£¨¶Ô¶Ë¸´Î»»ò¶ÏÏß£©¡£
+  Description:   ä¸¢å¼ƒåŠæˆªå¸§ï¼Œå¹¶è®°ä¸€æ¬¡ã€Œå…¶å®ƒåŸå› ã€çš„æ‹’æ”¶ã€‚
+  Calls:         m2_reset()ã€record_reject()
+  Called By:     m2_feed()ã€æ¥æ”¶ç«¯çš„ç©ºé—²è¶…æ—¶å¤„ç†
+  Input:         receiver â€”â€” æ¥æ”¶å™¨çŠ¶æ€
+  Output:        æ¸…ç©ºæ”¶å¸§ç¼“å†²
+  Return:        æ— 
+  Others:        å…¸å‹è§¦å‘ï¼šåŠå¸§é™ç½®è¶…è¿‡ 30ms æ— æ–°å­—èŠ‚ï¼ˆå¯¹ç«¯å¤ä½æˆ–æ–­çº¿ï¼‰ã€‚
 -----------------------------------------------------------*/
-/* ¶ªµô°ë½ØÖ¡£¬Í¬Ê±±£Áô×î½üÒ»´ÎÒÑ½ÓÊÜµÄ¿ìÕÕ¡£ */
+/* ä¸¢æ‰åŠæˆªå¸§ï¼ŒåŒæ—¶ä¿ç•™æœ€è¿‘ä¸€æ¬¡å·²æ¥å—çš„å¿«ç…§ã€‚ */
 void m2_discard(M2Receiver *receiver)
 {
-    if (receiver != 0)  /* Èë²ÎÓĞĞ§ */
+    if (receiver != 0)  /* å…¥å‚æœ‰æ•ˆ */
     {
-        m2_reset(receiver);  /* ¶ªÆú°ë½ØÖ¡ */
-        record_reject(receiver, M2_REJECT_OTHER);  /* ¼ÇÒ»´Î¡¸ÆäËüÔ­Òò¡¹¾ÜÊÕ */
+        m2_reset(receiver);  /* ä¸¢å¼ƒåŠæˆªå¸§ */
+        record_reject(receiver, M2_REJECT_OTHER);  /* è®°ä¸€æ¬¡ã€Œå…¶å®ƒåŸå› ã€æ‹’æ”¶ */
     }
 }
 
 /*-----------------------------------------------------------
   Function:      m2_feed
-  Description:   Öğ×Ö½ÚÊÕÖ¡×´Ì¬»ú¡£°´ÒÑÊÕ×Ö½ÚÊıÍÆ½ø£ºµÈÖ¡Í·1 -> µÈÖ¡Í·2 ->
-                 ÀÛ»ıÔØºÉ -> ÊÕÂú 42 ×Ö½ÚºóÕûÌåĞ£Ñé£¬Ğ£ÑéÍ¨¹ıÔò¸üĞÂ×îĞÂÖ¡¡£
-  Calls:         m2_decode_reason()¡¢m2_reset()¡¢m2_discard()¡¢record_reject()
-  Called By:     ½ÓÊÕ²à´®¿Ú°áÔËº¯Êı£¨D1 µÄ recv_uart£¬Ã¿¸ö×Ö½Úµ÷ÓÃÒ»´Î£©
-  Input:         receiver ¡ª¡ª ½ÓÊÕÆ÷×´Ì¬£»byte ¡ª¡ª ±¾´ÎÊÕµ½µÄ×Ö½Ú£»nowMs ¡ª¡ª µ±Ç°ºÁÃë
-  Output:        ¸üĞÂ receiver µÄ»º³å¡¢latest Óë¸÷¼ÆÊı
-  Return:        true = ±¾´Î´ÕÆë²¢Ğ£ÑéÍ¨¹ıÒ»ÕûÖ¡£»false = ÉĞÎ´³ÉÖ¡»ò±»¾ÜÊÕ
-  Others:        1) ÔØºÉÄÚ²¿³öÏÖÖ¡Í·×Ö½Ú²»»á±»ÎóÅĞ£¬used>=2 ºóÒ»ÂÉ°´Êı¾İ´¦Àí£»
-                                  2) ĞòºÅÓëÊ±¼ä´Á¾ùÓëÉÏÒ»Ö¡ÏàÍ¬µÄÖØ¸´Ö¡¼ÆÈë duplicates ²¢¶ªÆú£»
-                                  3) ĞòºÅ»ØÍË¼ÆÈë resyncs£¬µ«¸ÃÖ¡ÈÔ±»½ÓÊÜ¡£
+  Description:   é€å­—èŠ‚æ”¶å¸§çŠ¶æ€æœºã€‚æŒ‰å·²æ”¶å­—èŠ‚æ•°æ¨è¿›ï¼šç­‰å¸§å¤´1 -> ç­‰å¸§å¤´2 ->
+                 ç´¯ç§¯è½½è· -> æ”¶æ»¡ 42 å­—èŠ‚åæ•´ä½“æ ¡éªŒï¼Œæ ¡éªŒé€šè¿‡åˆ™æ›´æ–°æœ€æ–°å¸§ã€‚
+  Calls:         m2_decode_reason()ã€m2_reset()ã€m2_discard()ã€record_reject()
+  Called By:     æ¥æ”¶ä¾§ä¸²å£æ¬è¿å‡½æ•°ï¼ˆD1 çš„ recv_uartï¼Œæ¯ä¸ªå­—èŠ‚è°ƒç”¨ä¸€æ¬¡ï¼‰
+  Input:         receiver â€”â€” æ¥æ”¶å™¨çŠ¶æ€ï¼›byte â€”â€” æœ¬æ¬¡æ”¶åˆ°çš„å­—èŠ‚ï¼›nowMs â€”â€” å½“å‰æ¯«ç§’
+  Output:        æ›´æ–° receiver çš„ç¼“å†²ã€latest ä¸å„è®¡æ•°
+  Return:        true = æœ¬æ¬¡å‡‘é½å¹¶æ ¡éªŒé€šè¿‡ä¸€æ•´å¸§ï¼›false = å°šæœªæˆå¸§æˆ–è¢«æ‹’æ”¶
+  Others:        1) è½½è·å†…éƒ¨å‡ºç°å¸§å¤´å­—èŠ‚ä¸ä¼šè¢«è¯¯åˆ¤ï¼Œused>=2 åä¸€å¾‹æŒ‰æ•°æ®å¤„ç†ï¼›
+                                  2) åºå·ä¸æ—¶é—´æˆ³å‡ä¸ä¸Šä¸€å¸§ç›¸åŒçš„é‡å¤å¸§è®¡å…¥ duplicates å¹¶ä¸¢å¼ƒï¼›
+                                  3) åºå·å›é€€è®¡å…¥ resyncsï¼Œä½†è¯¥å¸§ä»è¢«æ¥å—ã€‚
 -----------------------------------------------------------*/
-/* Öğ×Ö½Ú×´Ì¬»ú£»ÔØºÉÄÚ²¿³öÏÖµÄÖ¡Í·×Ö½Ú°´ÆÕÍ¨Êı¾İ´¦Àí¡£ */
+/* é€å­—èŠ‚çŠ¶æ€æœºï¼›è½½è·å†…éƒ¨å‡ºç°çš„å¸§å¤´å­—èŠ‚æŒ‰æ™®é€šæ•°æ®å¤„ç†ã€‚ */
 bool m2_feed(M2Receiver *receiver, uint8_t byte, uint32_t nowMs)
 {
-    M2Frame next;  /* ¸ÕÊÕµ½µÄÕâÒ»Ö¡ */
+    M2Frame next;  /* åˆšæ”¶åˆ°çš„è¿™ä¸€å¸§ */
 
-    if (receiver == 0)  /* Èë²ÎÎª¿Õ */
+    if (receiver == 0)  /* å…¥å‚ä¸ºç©º */
     {
-        return false;  /* Ö±½Ó·µ»Ø */
+        return false;  /* ç›´æ¥è¿”å› */
     }
-    if (receiver->used == 0U)  /* ×´Ì¬ 0£ºµÈÖ¡Í· 1 */
+    if (receiver->used == 0U)  /* çŠ¶æ€ 0ï¼šç­‰å¸§å¤´ 1 */
     {
-        if (byte == M2_SYNC0)  /* ÊÕµ½ 0xA5 */
+        if (byte == M2_SYNC0)  /* æ”¶åˆ° 0xA5 */
         {
-            receiver->buffer[0] = byte;  /* ´æ½ø»º³å */
-            receiver->used = 1U;  /* ½øÈë×´Ì¬ 1 */
+            receiver->buffer[0] = byte;  /* å­˜è¿›ç¼“å†² */
+            receiver->used = 1U;  /* è¿›å…¥çŠ¶æ€ 1 */
         }
-        return false;  /* ±¾×Ö½Ú´¦ÀíÍê±Ï */
+        return false;  /* æœ¬å­—èŠ‚å¤„ç†å®Œæ¯• */
     }
-    if (receiver->used == 1U)  /* ×´Ì¬ 1£ºµÈÖ¡Í· 2 */
+    if (receiver->used == 1U)  /* çŠ¶æ€ 1ï¼šç­‰å¸§å¤´ 2 */
     {
-        if (byte == M2_SYNC1)  /* ÊÕµ½ 0x5A£¬Ö¡Í·´ÕÆë */
+        if (byte == M2_SYNC1)  /* æ”¶åˆ° 0x5Aï¼Œå¸§å¤´å‡‘é½ */
         {
-            receiver->buffer[1] = byte;  /* ´æ½ø»º³å */
-            receiver->used = 2U;  /* ½øÈë×´Ì¬ 2 */
+            receiver->buffer[1] = byte;  /* å­˜è¿›ç¼“å†² */
+            receiver->used = 2U;  /* è¿›å…¥çŠ¶æ€ 2 */
         }
-        else if (byte == M2_SYNC0)  /* ÓÖÊÇÒ»¸ö 0xA5£ºÖØĞÂ¶ÔÆë */
+        else if (byte == M2_SYNC0)  /* åˆæ˜¯ä¸€ä¸ª 0xA5ï¼šé‡æ–°å¯¹é½ */
         {
-            receiver->buffer[0] = byte;  /* ¸²¸ÇÊ××Ö½Ú£¬ÈÔÍ£ÔÚ×´Ì¬ 1 */
+            receiver->buffer[0] = byte;  /* è¦†ç›–é¦–å­—èŠ‚ï¼Œä»åœåœ¨çŠ¶æ€ 1 */
         }
         else
         {
-            receiver->used = 0U;  /* ÆäËü×Ö½Ú£ºÕûÖ¡×÷·Ï£¬ÖØĞÂµÈ */
+            receiver->used = 0U;  /* å…¶å®ƒå­—èŠ‚ï¼šæ•´å¸§ä½œåºŸï¼Œé‡æ–°ç­‰ */
         }
-        return false;  /* ±¾×Ö½Ú´¦ÀíÍê±Ï */
+        return false;  /* æœ¬å­—èŠ‚å¤„ç†å®Œæ¯• */
     }
-    if (receiver->used >= M2_FRAME_MAX)  /* ³¬³ö»º³åÇø£¨Õı³£²»»á·¢Éú£© */
+    if (receiver->used >= M2_FRAME_MAX)  /* è¶…å‡ºç¼“å†²åŒºï¼ˆæ­£å¸¸ä¸ä¼šå‘ç”Ÿï¼‰ */
     {
-        m2_discard(receiver);  /* ¶ªÆú²¢¼ÆÊı */
-        return false;  /* Ö±½Ó·µ»Ø */
+        m2_discard(receiver);  /* ä¸¢å¼ƒå¹¶è®¡æ•° */
+        return false;  /* ç›´æ¥è¿”å› */
     }
-    receiver->buffer[receiver->used++] = byte;  /* ´æÈë²¢Ç°ÒÆÊÕÖ¡Î»ÖÃ */
-    if (receiver->used == 3U && byte != M2_VERSION)  /* µÚ 3 ×Ö½Ú±ØĞëÊÇ°æ±¾ºÅ */
+    receiver->buffer[receiver->used++] = byte;  /* å­˜å…¥å¹¶å‰ç§»æ”¶å¸§ä½ç½® */
+    if (receiver->used == 3U && byte != M2_VERSION)  /* ç¬¬ 3 å­—èŠ‚å¿…é¡»æ˜¯ç‰ˆæœ¬å· */
     {
-        m2_reset(receiver);  /* ¸´Î»×´Ì¬»ú */
-        record_reject(receiver, M2_REJECT_VERSION);  /* ¼Ç°æ±¾²»·û */
-        return false;  /* ±¾Ö¡×÷·Ï */
+        m2_reset(receiver);  /* å¤ä½çŠ¶æ€æœº */
+        record_reject(receiver, M2_REJECT_VERSION);  /* è®°ç‰ˆæœ¬ä¸ç¬¦ */
+        return false;  /* æœ¬å¸§ä½œåºŸ */
     }
-    if (receiver->used == 4U)  /* µÚ 4 ×Ö½ÚÊÇÔØºÉ³¤¶È */
+    if (receiver->used == 4U)  /* ç¬¬ 4 å­—èŠ‚æ˜¯è½½è·é•¿åº¦ */
     {
-        if (byte != M2_PAYLOAD_SIZE)  /* ³¤¶È×Ö¶Î²»·û */
+        if (byte != M2_PAYLOAD_SIZE)  /* é•¿åº¦å­—æ®µä¸ç¬¦ */
         {
-            m2_reset(receiver);  /* ¸´Î»×´Ì¬»ú */
-            record_reject(receiver, M2_REJECT_LENGTH);  /* ¼Ç³¤¶È²»·û */
-            return false;  /* ±¾Ö¡×÷·Ï */
+            m2_reset(receiver);  /* å¤ä½çŠ¶æ€æœº */
+            record_reject(receiver, M2_REJECT_LENGTH);  /* è®°é•¿åº¦ä¸ç¬¦ */
+            return false;  /* æœ¬å¸§ä½œåºŸ */
         }
-        receiver->expected = M2_FRAME_SIZE;  /* È·ÈÏ±¾Ö¡¹² 42 ×Ö½Ú */
+        receiver->expected = M2_FRAME_SIZE;  /* ç¡®è®¤æœ¬å¸§å…± 42 å­—èŠ‚ */
     }
-    if (receiver->expected != 0U && receiver->used == receiver->expected)  /* ÒÑÊÕÂúÒ»ÕûÖ¡ */
+    if (receiver->expected != 0U && receiver->used == receiver->expected)  /* å·²æ”¶æ»¡ä¸€æ•´å¸§ */
     {
-        const M2RejectReason reason = m2_decode_reason(receiver->buffer, M2_FRAME_SIZE, &next);  /* ÕûÌåĞ£Ñé²¢½âÎö */
-        m2_reset(receiver);  /* ÎŞÂÛ³É°Ü¶¼¸´Î»£¬×¼±¸ÏÂÒ»Ö¡ */
-        if (reason != M2_REJECT_NONE)  /* Ğ£Ñé²»Í¨¹ı */
+        const M2RejectReason reason = m2_decode_reason(receiver->buffer, M2_FRAME_SIZE, &next);  /* æ•´ä½“æ ¡éªŒå¹¶è§£æ */
+        m2_reset(receiver);  /* æ— è®ºæˆè´¥éƒ½å¤ä½ï¼Œå‡†å¤‡ä¸‹ä¸€å¸§ */
+        if (reason != M2_REJECT_NONE)  /* æ ¡éªŒä¸é€šè¿‡ */
         {
-            record_reject(receiver, reason);  /* °´Ô­Òò·ÖÀà¼ÆÊı */
-            return false;  /* ±¾Ö¡¶ªÆú */
+            record_reject(receiver, reason);  /* æŒ‰åŸå› åˆ†ç±»è®¡æ•° */
+            return false;  /* æœ¬å¸§ä¸¢å¼ƒ */
         }
-        if (receiver->hasFrame && next.seq == receiver->latest.seq &&  /* ĞòºÅÓëÊ±¼ä´Á¶¼ÓëÉÏÒ»Ö¡ÏàÍ¬ */
-            next.uptimeMs == receiver->latest.uptimeMs)  /* ÅĞ¶¨ÎªÖØ¸´Ö¡ */
+        if (receiver->hasFrame && next.seq == receiver->latest.seq &&  /* åºå·ä¸æ—¶é—´æˆ³éƒ½ä¸ä¸Šä¸€å¸§ç›¸åŒ */
+            next.uptimeMs == receiver->latest.uptimeMs)  /* åˆ¤å®šä¸ºé‡å¤å¸§ */
         {
-            ++receiver->duplicates;  /* ÖØ¸´Ö¡¼ÆÊı¼ÓÒ» */
-            return false;  /* ¶ªÆúÖØ¸´Ö¡ */
+            ++receiver->duplicates;  /* é‡å¤å¸§è®¡æ•°åŠ ä¸€ */
+            return false;  /* ä¸¢å¼ƒé‡å¤å¸§ */
         }
-        if (receiver->hasFrame && next.seq < receiver->latest.seq)  /* ĞòºÅ»ØÍË£º¶Ô¶Ë¿ÉÄÜÖØÆô¹ı */
+        if (receiver->hasFrame && next.seq < receiver->latest.seq)  /* åºå·å›é€€ï¼šå¯¹ç«¯å¯èƒ½é‡å¯è¿‡ */
         {
-            ++receiver->resyncs;  /* ÖØĞÂÍ¬²½¼ÆÊı¼ÓÒ»£¨¸ÃÖ¡ÈÔ½ÓÊÜ£© */
+            ++receiver->resyncs;  /* é‡æ–°åŒæ­¥è®¡æ•°åŠ ä¸€ï¼ˆè¯¥å¸§ä»æ¥å—ï¼‰ */
         }
-        receiver->latest = next;  /* ·¢²¼×îĞÂÖ¡ */
-        receiver->lastNewMs = nowMs;  /* ¼ÇÂ¼ÊÕµ½Ê±¿Ì */
-        receiver->hasFrame = true;  /* ±ê¼ÇÒÑÊÕµ½¹ıÖ¡ */
-        ++receiver->accepted;  /* ½ÓÊÕ³É¹¦¼ÆÊı¼ÓÒ» */
-        return true;  /* ±¾´Î´ÕÆë²¢Ğ£ÑéÍ¨¹ı */
+        receiver->latest = next;  /* å‘å¸ƒæœ€æ–°å¸§ */
+        receiver->lastNewMs = nowMs;  /* è®°å½•æ”¶åˆ°æ—¶åˆ» */
+        receiver->hasFrame = true;  /* æ ‡è®°å·²æ”¶åˆ°è¿‡å¸§ */
+        ++receiver->accepted;  /* æ¥æ”¶æˆåŠŸè®¡æ•°åŠ ä¸€ */
+        return true;  /* æœ¬æ¬¡å‡‘é½å¹¶æ ¡éªŒé€šè¿‡ */
     }
-    return false;  /* ÉĞÎ´ÊÕÂú 42 ×Ö½Ú */
+    return false;  /* å°šæœªæ”¶æ»¡ 42 å­—èŠ‚ */
 }
 
 /*-----------------------------------------------------------
   Function:      m2_link
-  Description:   ÅĞ¶ÏÁ´Â·µ±Ç°×´Ì¬£º´ÓÎ´ÊÕµ½Ö¡Îª WAITING£¬³¬¹ı 3 ÃëÎŞĞÂÖ¡Îª STALE£¬
-                 ·ñÔòÎª LIVE¡£
-  Calls:         ÎŞ
-  Called By:     ÏÔÊ¾ÓëÉÏ±¨Âß¼­£¨D1 µÄ status_json.cpp µÈ£©
-  Input:         receiver ¡ª¡ª ½ÓÊÕÆ÷×´Ì¬£»nowMs ¡ª¡ª µ±Ç°ºÁÃë
-  Output:        ÎŞ
+  Description:   åˆ¤æ–­é“¾è·¯å½“å‰çŠ¶æ€ï¼šä»æœªæ”¶åˆ°å¸§ä¸º WAITINGï¼Œè¶…è¿‡ 3 ç§’æ— æ–°å¸§ä¸º STALEï¼Œ
+                 å¦åˆ™ä¸º LIVEã€‚
+  Calls:         æ— 
+  Called By:     æ˜¾ç¤ºä¸ä¸ŠæŠ¥é€»è¾‘ï¼ˆD1 çš„ status_json.cpp ç­‰ï¼‰
+  Input:         receiver â€”â€” æ¥æ”¶å™¨çŠ¶æ€ï¼›nowMs â€”â€” å½“å‰æ¯«ç§’
+  Output:        æ— 
   Return:        M2_WAITING / M2_LIVE / M2_STALE
-  Others:        Ê¹ÓÃÎŞ·ûºÅÏà¼õ¼ÆËãÊ±¼ä²î£¬ÔÚºÁÃë¼ÆÊı»ØÈÆÊ±ÈÔ±£³ÖÕıÈ·¡£
+  Others:        ä½¿ç”¨æ— ç¬¦å·ç›¸å‡è®¡ç®—æ—¶é—´å·®ï¼Œåœ¨æ¯«ç§’è®¡æ•°å›ç»•æ—¶ä»ä¿æŒæ­£ç¡®ã€‚
 -----------------------------------------------------------*/
-/* ÓÃÎŞ·ûºÅÏà¼õËãÊ±¼ä²î£¬ºÁÃë¼ÆÊı»ØÈÆÊ±ÅĞ¶¨ÈÔÈ»ÕıÈ·¡£ */
+/* ç”¨æ— ç¬¦å·ç›¸å‡ç®—æ—¶é—´å·®ï¼Œæ¯«ç§’è®¡æ•°å›ç»•æ—¶åˆ¤å®šä»ç„¶æ­£ç¡®ã€‚ */
 M2Link m2_link(const M2Receiver *receiver, uint32_t nowMs)
 {
-    if (receiver == 0 || !receiver->hasFrame)  /* Èë²ÎÎª¿Õ»ò´ÓÎ´ÊÕµ½¹ıÖ¡ */
+    if (receiver == 0 || !receiver->hasFrame)  /* å…¥å‚ä¸ºç©ºæˆ–ä»æœªæ”¶åˆ°è¿‡å¸§ */
     {
-        return M2_WAITING;  /* µÈ´ıÖĞ */
+        return M2_WAITING;  /* ç­‰å¾…ä¸­ */
     }
-    return (uint32_t)(nowMs - receiver->lastNewMs) > M2_TIMEOUT_MS ?  /* ¾àÉÏ´ÎÊÕµ½Ö¡µÄÊ±¼ä²î */
-        M2_STALE : M2_LIVE;  /* ³¬Ê± = STALE£¬·ñÔò LIVE */
+    return (uint32_t)(nowMs - receiver->lastNewMs) > M2_TIMEOUT_MS ?  /* è·ä¸Šæ¬¡æ”¶åˆ°å¸§çš„æ—¶é—´å·® */
+        M2_STALE : M2_LIVE;  /* è¶…æ—¶ = STALEï¼Œå¦åˆ™ LIVE */
 }

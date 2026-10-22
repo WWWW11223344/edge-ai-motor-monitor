@@ -32,6 +32,18 @@
 | `led.c/h`、`systick.c/h` | 报警灯 PF9、微秒/毫秒延时 |
 | `fastcap.c/h`、`wave_dump.c/h` | 高速波形抓取与串口导出，仅调试用，不参与 AI 判定 |
 
+## 源码编码与行尾
+
+| 项目 | 约定 | 原因 |
+|---|---|---|
+| 文件编码 | **UTF-8（无 BOM）** | Keil MDK 5.14 的 uVision 内置「Encode in UTF-8 without signature」选项，UTF-8 中文注释在编辑器里正常显示；同时 GitHub 网页按 UTF-8 渲染，源码在网页上不会乱码 |
+| 行尾 | **原样保留**（部分文件 CRLF、部分 LF） | 与实际编译验证过的工程逐字节一致；`.gitattributes` 已对 `*.c` `*.h` `*.s` `*.ino` `*.cpp` 声明 `-text`，保证克隆下来行尾不被 `core.autocrlf` 改写 |
+| 编译验证 | ARMCC 5.05 对 UTF-8 源文件编译结果与 GBK 版**逐字节相同** | `Code=22288 RO-data=6548 RW-data=264 ZI-data=17992`，0 Error 0 Warning，hex md5 `eb7e23174ca6873ddb9aa1962eccae4e` |
+
+> 早期版本本仓库的 `.c/.h` 用的是 GBK 编码。ARMCC 5 虽能正常编译，但 GitHub 网页
+> 按 UTF-8 渲染 GBK 字节，`main.c` 会出现 7613 个替换字符（乱码）。因此统一改为
+> UTF-8 无 BOM，并实测确认固件产物 md5 未变。
+
 ## 编译与烧录
 
 - **编译**：Keil 打开 `USER/STM32F407_Template.uvprojx` 直接 Build；命令行用

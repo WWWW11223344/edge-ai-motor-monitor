@@ -196,6 +196,14 @@ NanoEdge AI 模型本身占 **RAM 3668 B / Flash 3108 B**。库端 `learning_min
 3. 首次上电保持电机停转 → 自动完成电流零点校准（64 次平均）
 4. 按 PE3 升档起转，转起来后等 OLED 第 6 页的相似度 `S:` 达到 100
 
+**源码编码**：固件源码统一为 **UTF-8（无 BOM）**，Keil uVision 5.14 支持
+（Edit → Encoding → UTF-8 without signature），GitHub 网页也不会乱码。
+行尾按文件原样保留，`.gitattributes` 已对 `*.c` `*.h` `*.s` `*.ino` `*.cpp` 声明 `-text`，
+克隆下来不会被 `core.autocrlf` 改写。UTF-8 与原 GBK 版编译产物**逐字节相同**
+（`Code=22288 RO-data=6548 RW-data=264 ZI-data=17992`，0 Error 0 Warning，
+hex md5 `eb7e23174ca6873ddb9aa1962eccae4e`）。详见
+[`firmware_stm32/README_源码目录.md`](firmware_stm32/README_源码目录.md) 的「源码编码与行尾」。
+
 **烧录注意**：J-Link 脚本必须带 `device STM32F407ZG`，不带时 erase 会被静默拒绝
 却照样打印 O.K.。仓库里的 `burn_final_20261021.jlink` 已经写好，
 并且烧录前会先关 ADC2/DMA2（否则它们会持续写 RAM 干扰）。

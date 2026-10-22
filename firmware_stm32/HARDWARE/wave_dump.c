@@ -1,384 +1,384 @@
 /************************************************************
-  Copyright (C), 2026, ÍôÏÍÔÆ
+  Copyright (C), 2026, æ±ªè´¤äº‘
   FileName:    wave_dump.c
-  Author:      ÍôÏÍÔÆ
+  Author:      æ±ªè´¤äº‘
   Version:     1.0
   Date:        2026-10-19
-  Description: 20 kHz µçÁ÷²¨ĞÎµ¼³öÍ¨µÀµÄÊµÏÖ£¨USART1 + DMA2 Stream7£©¡£
-               Ö¡¸ñÊ½ÓëÉè¼ÆÀíÓÉ¼û wave_dump.h ÎÄ¼şÍ·¡£
+  Description: 20 kHz ç”µæµæ³¢å½¢å¯¼å‡ºé€šé“çš„å®ç°ï¼ˆUSART1 + DMA2 Stream7ï¼‰ã€‚
+               å¸§æ ¼å¼ä¸è®¾è®¡ç†ç”±è§ wave_dump.h æ–‡ä»¶å¤´ã€‚
   Function List:
-    1. WaveDump_Init()        ÅäÖÃ PA9 / USART1 / DMA2 Stream7
-    2. WaveDump_Poll()        °´ 100 ms ·ÖÆµµ¼³öÒ»Ö¡ 200 µã²¨ĞÎ
-    3. WaveDump_SetEnabled() / WaveDump_IsEnabled() ¿ª¹ØÓë²éÑ¯
-    4. WaveDump_GetSent() / WaveDump_GetDropped() Í³¼Æ
+    1. WaveDump_Init()        é…ç½® PA9 / USART1 / DMA2 Stream7
+    2. WaveDump_Poll()        æŒ‰ 100 ms åˆ†é¢‘å¯¼å‡ºä¸€å¸§ 200 ç‚¹æ³¢å½¢
+    3. WaveDump_SetEnabled() / WaveDump_IsEnabled() å¼€å…³ä¸æŸ¥è¯¢
+    4. WaveDump_GetSent() / WaveDump_GetDropped() ç»Ÿè®¡
   History:
     <author>   <time>      <version>   <desc>
-    ÍôÏÍÔÆ     2026-10-19    1.0         ´´½¨ÎÄ¼ş£¬°´»ªÎª¹æ·¶±àĞ´×¢ÊÍ
+    æ±ªè´¤äº‘     2026-10-19    1.0         åˆ›å»ºæ–‡ä»¶ï¼ŒæŒ‰åä¸ºè§„èŒƒç¼–å†™æ³¨é‡Š
 ***********************************************************/
 
 #include "wave_dump.h"
-#include "m2_protocol.h"    /* ¸´ÓÃ m2_crc()£¬±ÜÃâÔÙÔìÒ»·İ CRC ÊµÏÖ */
+#include "m2_protocol.h"    /* å¤ç”¨ m2_crc()ï¼Œé¿å…å†é€ ä¸€ä»½ CRC å®ç° */
 
-/* ---- Ö¡ÄÚÆ«ÒÆ£¨Óë wave_dump.h µÄÖ¡¸ñÊ½±íÒ»Ò»¶ÔÓ¦£© ---- */
-#define WAVE_DUMP_OFS_SYNC0      0U     /* Ö¡Í·µÚ 1 ×Ö½Ú */
-#define WAVE_DUMP_OFS_SYNC1      1U     /* Ö¡Í·µÚ 2 ×Ö½Ú */
-#define WAVE_DUMP_OFS_VERSION    2U     /* Ğ­Òé°æ±¾ */
-#define WAVE_DUMP_OFS_POINTS     3U     /* µãÊı£¬2 ×Ö½Ú */
-#define WAVE_DUMP_OFS_SEQ        5U     /* Ö¡ĞòºÅ£¬4 ×Ö½Ú */
-#define WAVE_DUMP_OFS_STATUS     9U     /* fastcap ×´Ì¬Î» */
-#define WAVE_DUMP_OFS_DC        10U     /* Ö±Á÷·ÖÁ¿£¬2 ×Ö½Ú */
-#define WAVE_DUMP_OFS_MIN       12U     /* Ö¡ÄÚ×îĞ¡Öµ£¬2 ×Ö½Ú */
-#define WAVE_DUMP_OFS_MAX       14U     /* Ö¡ÄÚ×î´óÖµ£¬2 ×Ö½Ú */
-#define WAVE_DUMP_OFS_DATA      16U     /* 200 µãÊı¾İÆğµã */
-#define WAVE_DUMP_OFS_CRC      416U     /* CRC Æğµã */
-#define WAVE_DUMP_CRC_SPAN     414U     /* CRC ¸²¸Ç³¤¶È = 416 - 2 */
+/* ---- å¸§å†…åç§»ï¼ˆä¸ wave_dump.h çš„å¸§æ ¼å¼è¡¨ä¸€ä¸€å¯¹åº”ï¼‰ ---- */
+#define WAVE_DUMP_OFS_SYNC0      0U     /* å¸§å¤´ç¬¬ 1 å­—èŠ‚ */
+#define WAVE_DUMP_OFS_SYNC1      1U     /* å¸§å¤´ç¬¬ 2 å­—èŠ‚ */
+#define WAVE_DUMP_OFS_VERSION    2U     /* åè®®ç‰ˆæœ¬ */
+#define WAVE_DUMP_OFS_POINTS     3U     /* ç‚¹æ•°ï¼Œ2 å­—èŠ‚ */
+#define WAVE_DUMP_OFS_SEQ        5U     /* å¸§åºå·ï¼Œ4 å­—èŠ‚ */
+#define WAVE_DUMP_OFS_STATUS     9U     /* fastcap çŠ¶æ€ä½ */
+#define WAVE_DUMP_OFS_DC        10U     /* ç›´æµåˆ†é‡ï¼Œ2 å­—èŠ‚ */
+#define WAVE_DUMP_OFS_MIN       12U     /* å¸§å†…æœ€å°å€¼ï¼Œ2 å­—èŠ‚ */
+#define WAVE_DUMP_OFS_MAX       14U     /* å¸§å†…æœ€å¤§å€¼ï¼Œ2 å­—èŠ‚ */
+#define WAVE_DUMP_OFS_DATA      16U     /* 200 ç‚¹æ•°æ®èµ·ç‚¹ */
+#define WAVE_DUMP_OFS_CRC      416U     /* CRC èµ·ç‚¹ */
+#define WAVE_DUMP_CRC_SPAN     414U     /* CRC è¦†ç›–é•¿åº¦ = 416 - 2 */
 
-#define WAVE_DUMP_VERSION       0x01U   /* µ±Ç°Ö¡°æ±¾ */
-#define WAVE_DUMP_SYNC0         0xA5U   /* Ö¡Í·µÚ 1 ×Ö½Ú */
-#define WAVE_DUMP_SYNC1         0x5AU   /* Ö¡Í·µÚ 2 ×Ö½Ú */
+#define WAVE_DUMP_VERSION       0x01U   /* å½“å‰å¸§ç‰ˆæœ¬ */
+#define WAVE_DUMP_SYNC0         0xA5U   /* å¸§å¤´ç¬¬ 1 å­—èŠ‚ */
+#define WAVE_DUMP_SYNC1         0x5AU   /* å¸§å¤´ç¬¬ 2 å­—èŠ‚ */
 
-/* ---- Ó²¼ş×ÊÔ´ ---- */
-#define WAVE_DUMP_UART          USART1              /* °åÔØ CH340C ½Ó PA9 / PA10 */
-#define WAVE_DUMP_DMA_STREAM    DMA2_Stream7        /* USART1_TX ¹Ì¶¨Ó³Éäµ½ DMA2 Stream7 */
-#define WAVE_DUMP_DMA_CHANNEL   DMA_Channel_4       /* ÓëÉÏÒ»Ìõ¶ÔÓ¦£¬²»¿É¸Ä */
-#define WAVE_DUMP_DMA_FLAG_TC   DMA_FLAG_TCIF7      /* ´«ÊäÍê³É±êÖ¾ */
+/* ---- ç¡¬ä»¶èµ„æº ---- */
+#define WAVE_DUMP_UART          USART1              /* æ¿è½½ CH340C æ¥ PA9 / PA10 */
+#define WAVE_DUMP_DMA_STREAM    DMA2_Stream7        /* USART1_TX å›ºå®šæ˜ å°„åˆ° DMA2 Stream7 */
+#define WAVE_DUMP_DMA_CHANNEL   DMA_Channel_4       /* ä¸ä¸Šä¸€æ¡å¯¹åº”ï¼Œä¸å¯æ”¹ */
+#define WAVE_DUMP_DMA_FLAG_TC   DMA_FLAG_TCIF7      /* ä¼ è¾“å®Œæˆæ ‡å¿— */
 
-/* ---- Ä£¿é×´Ì¬ ---- */
-static uint8_t  g_frame[WAVE_DUMP_FRAME_SIZE];  /* ´ı·¢ËÍµÄÕûÖ¡£¬DMA µÄÄÚ´æÔ´ */
-static uint32_t g_seq;                          /* Ö¡ĞòºÅ£¬Ã¿·¢Ò»Ö¡¼Ó 1 */
-static uint32_t g_sent;                         /* ³É¹¦Æô¶¯·¢ËÍµÄÖ¡Êı */
-static uint32_t g_dropped;                      /* Òò DMA Ã¦¶ø¶ªÆúµÄÖ¡Êı */
-static uint8_t  g_decimCount;                   /* ·ÖÆµ¼ÆÊıÆ÷ */
-static uint8_t  g_enabled;                      /* 1 = ÔÊĞíµ¼³ö */
-static uint8_t  g_inited;                       /* 1 = ÒÑÍê³É³õÊ¼»¯ */
+/* ---- æ¨¡å—çŠ¶æ€ ---- */
+static uint8_t  g_frame[WAVE_DUMP_FRAME_SIZE];  /* å¾…å‘é€çš„æ•´å¸§ï¼ŒDMA çš„å†…å­˜æº */
+static uint32_t g_seq;                          /* å¸§åºå·ï¼Œæ¯å‘ä¸€å¸§åŠ  1 */
+static uint32_t g_sent;                         /* æˆåŠŸå¯åŠ¨å‘é€çš„å¸§æ•° */
+static uint32_t g_dropped;                      /* å›  DMA å¿™è€Œä¸¢å¼ƒçš„å¸§æ•° */
+static uint8_t  g_decimCount;                   /* åˆ†é¢‘è®¡æ•°å™¨ */
+static uint8_t  g_enabled;                      /* 1 = å…è®¸å¯¼å‡º */
+static uint8_t  g_inited;                       /* 1 = å·²å®Œæˆåˆå§‹åŒ– */
 
-/* ---- ÎÄ¼şË½ÓĞº¯ÊıÔ­ĞÍ ---- */
-static void cfg_gpio(void);                     /* ÅäÖÃ PA9 Îª USART1_TX */
-static void cfg_uart(void);                     /* ÅäÖÃ USART1 ²ÎÊı */
-static void cfg_dma(void);                      /* ÅäÖÃ DMA2 Stream7 °áÔË */
-static void put_u16(uint8_t *dst, uint16_t value);  /* Ğ¡¶ËĞ´ 2 ×Ö½Ú */
-static void put_u32(uint8_t *dst, uint32_t value);  /* Ğ¡¶ËĞ´ 4 ×Ö½Ú */
-static void build_frame(const FastcapSample *sample);  /* ×é×°Ò»Ö¡ */
-static void start_send(void);                   /* Æô¶¯Ò»´Î DMA ·¢ËÍ */
+/* ---- æ–‡ä»¶ç§æœ‰å‡½æ•°åŸå‹ ---- */
+static void cfg_gpio(void);                     /* é…ç½® PA9 ä¸º USART1_TX */
+static void cfg_uart(void);                     /* é…ç½® USART1 å‚æ•° */
+static void cfg_dma(void);                      /* é…ç½® DMA2 Stream7 æ¬è¿ */
+static void put_u16(uint8_t *dst, uint16_t value);  /* å°ç«¯å†™ 2 å­—èŠ‚ */
+static void put_u32(uint8_t *dst, uint32_t value);  /* å°ç«¯å†™ 4 å­—èŠ‚ */
+static void build_frame(const FastcapSample *sample);  /* ç»„è£…ä¸€å¸§ */
+static void start_send(void);                   /* å¯åŠ¨ä¸€æ¬¡ DMA å‘é€ */
 
 /*-----------------------------------------------------------
   Function:      cfg_gpio
-  Description:   °Ñ PA9 ÅäÖÃÎª¸´ÓÃÍÆÍìÊä³ö£¬¸´ÓÃ¹¦ÄÜ AF7 = USART1¡£
-                 PA10£¨RX£©²»ÅäÖÃ£º±¾Í¨µÀÖ»·¢²»ÊÕ£¬ÉÙÅäÒ»¸ùÏßÉÙÒ»¸ö¸ÉÈÅÔ´¡£
+  Description:   æŠŠ PA9 é…ç½®ä¸ºå¤ç”¨æ¨æŒ½è¾“å‡ºï¼Œå¤ç”¨åŠŸèƒ½ AF7 = USART1ã€‚
+                 PA10ï¼ˆRXï¼‰ä¸é…ç½®ï¼šæœ¬é€šé“åªå‘ä¸æ”¶ï¼Œå°‘é…ä¸€æ ¹çº¿å°‘ä¸€ä¸ªå¹²æ‰°æºã€‚
   Calls:         RCC_AHB1PeriphClockCmd / GPIO_Init / GPIO_PinAFConfig
   Called By:     WaveDump_Init
-  Input:         ÎŞ
-  Output:        ÎŞ
-  Return:        ÎŞ
-  Others:        PA9 / PA10 ÔÚ¾É°æ¹¤³ÌÀïÒ»Ö±¿Õ×Å£¬²»´æÔÚÒı½Å³åÍ»¡£
+  Input:         æ— 
+  Output:        æ— 
+  Return:        æ— 
+  Others:        PA9 / PA10 åœ¨æ—§ç‰ˆå·¥ç¨‹é‡Œä¸€ç›´ç©ºç€ï¼Œä¸å­˜åœ¨å¼•è„šå†²çªã€‚
 -----------------------------------------------------------*/
 static void cfg_gpio(void)
 {
-    GPIO_InitTypeDef gpio = {0};   /* ±ØĞëÇåÁã£¬±ÜÃâÕ»ÉÏÀ¬»øĞ´½ø CR ¼Ä´æÆ÷ */
+    GPIO_InitTypeDef gpio = {0};   /* å¿…é¡»æ¸…é›¶ï¼Œé¿å…æ ˆä¸Šåƒåœ¾å†™è¿› CR å¯„å­˜å™¨ */
 
-    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);   /* ´ò¿ª GPIOA Ê±ÖÓ */
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);   /* æ‰“å¼€ GPIOA æ—¶é’Ÿ */
 
-    gpio.GPIO_Pin   = GPIO_Pin_9;               /* Ö»ÓÃ PA9 = USART1_TX */
-    gpio.GPIO_Mode  = GPIO_Mode_AF;             /* ¸´ÓÃÄ£Ê½ */
-    gpio.GPIO_OType = GPIO_OType_PP;            /* ÍÆÍìÊä³ö */
-    gpio.GPIO_PuPd  = GPIO_PuPd_UP;             /* ÉÏÀ­£¬¿ÕÏĞÊ±±£³Ö¸ßµçÆ½ */
-    gpio.GPIO_Speed = GPIO_Speed_50MHz;         /* 115200 ÓÃ 50MHz ´Â´ÂÓĞÓà */
-    GPIO_Init(GPIOA, &gpio);                    /* Ğ´Èë¼Ä´æÆ÷ */
+    gpio.GPIO_Pin   = GPIO_Pin_9;               /* åªç”¨ PA9 = USART1_TX */
+    gpio.GPIO_Mode  = GPIO_Mode_AF;             /* å¤ç”¨æ¨¡å¼ */
+    gpio.GPIO_OType = GPIO_OType_PP;            /* æ¨æŒ½è¾“å‡º */
+    gpio.GPIO_PuPd  = GPIO_PuPd_UP;             /* ä¸Šæ‹‰ï¼Œç©ºé—²æ—¶ä¿æŒé«˜ç”µå¹³ */
+    gpio.GPIO_Speed = GPIO_Speed_50MHz;         /* 115200 ç”¨ 50MHz ç»°ç»°æœ‰ä½™ */
+    GPIO_Init(GPIOA, &gpio);                    /* å†™å…¥å¯„å­˜å™¨ */
 
-    GPIO_PinAFConfig(GPIOA, GPIO_PinSource9, GPIO_AF_USART1);   /* PA9 ¸´ÓÃÎª USART1 */
+    GPIO_PinAFConfig(GPIOA, GPIO_PinSource9, GPIO_AF_USART1);   /* PA9 å¤ç”¨ä¸º USART1 */
 }
 
 /*-----------------------------------------------------------
   Function:      cfg_uart
-  Description:   ÅäÖÃ USART1 Îª 8 Î»Êı¾İ¡¢1 Î»Í£Ö¹¡¢ÎŞĞ£Ñé¡¢Ö»·¢Ä£Ê½£¬
-                ²¢´ò¿ª DMA ·¢ËÍÇëÇó¡£²¨ÌØÂÊÈ¡ WAVE_DUMP_BAUD¡£
+  Description:   é…ç½® USART1 ä¸º 8 ä½æ•°æ®ã€1 ä½åœæ­¢ã€æ— æ ¡éªŒã€åªå‘æ¨¡å¼ï¼Œ
+                å¹¶æ‰“å¼€ DMA å‘é€è¯·æ±‚ã€‚æ³¢ç‰¹ç‡å– WAVE_DUMP_BAUDã€‚
   Calls:         RCC_APB2PeriphClockCmd / USART_Init / USART_DMACmd / USART_Cmd
   Called By:     WaveDump_Init
-  Input:         ÎŞ
-  Output:        ÎŞ
-  Return:        ÎŞ
-  Others:        115200 ÏÂ 418 ×Ö½ÚÔ¼ 36 ms£¬Ğ¡ÓÚ 100 ms µÄµ¼³öÖÜÆÚ£¬Á´Â·ÓĞÓàÁ¿¡£
+  Input:         æ— 
+  Output:        æ— 
+  Return:        æ— 
+  Others:        115200 ä¸‹ 418 å­—èŠ‚çº¦ 36 msï¼Œå°äº 100 ms çš„å¯¼å‡ºå‘¨æœŸï¼Œé“¾è·¯æœ‰ä½™é‡ã€‚
 -----------------------------------------------------------*/
 static void cfg_uart(void)
 {
-    USART_InitTypeDef uart = {0};   /* ÇåÁã£¬Î´¸³Öµ×Ö¶Î±£³Ö 0 */
+    USART_InitTypeDef uart = {0};   /* æ¸…é›¶ï¼Œæœªèµ‹å€¼å­—æ®µä¿æŒ 0 */
 
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);   /* USART1 ¹ÒÔÚ APB2£¨84MHz£© */
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);   /* USART1 æŒ‚åœ¨ APB2ï¼ˆ84MHzï¼‰ */
 
     uart.USART_BaudRate            = WAVE_DUMP_BAUD;                        /* 115200 */
-    uart.USART_WordLength          = USART_WordLength_8b;                   /* 8 Î»Êı¾İ */
-    uart.USART_StopBits            = USART_StopBits_1;                      /* 1 Î»Í£Ö¹ */
-    uart.USART_Parity              = USART_Parity_No;                       /* ÎŞĞ£Ñé */
-    uart.USART_HardwareFlowControl = USART_HardwareFlowControl_None;        /* ÎŞÓ²¼şÁ÷¿Ø */
-    uart.USART_Mode                = USART_Mode_Tx;                         /* Ö»·¢²»ÊÕ */
-    USART_Init(WAVE_DUMP_UART, &uart);                                      /* Ğ´Èë¼Ä´æÆ÷ */
+    uart.USART_WordLength          = USART_WordLength_8b;                   /* 8 ä½æ•°æ® */
+    uart.USART_StopBits            = USART_StopBits_1;                      /* 1 ä½åœæ­¢ */
+    uart.USART_Parity              = USART_Parity_No;                       /* æ— æ ¡éªŒ */
+    uart.USART_HardwareFlowControl = USART_HardwareFlowControl_None;        /* æ— ç¡¬ä»¶æµæ§ */
+    uart.USART_Mode                = USART_Mode_Tx;                         /* åªå‘ä¸æ”¶ */
+    USART_Init(WAVE_DUMP_UART, &uart);                                      /* å†™å…¥å¯„å­˜å™¨ */
 
-    USART_DMACmd(WAVE_DUMP_UART, USART_DMAReq_Tx, ENABLE);   /* ÔÊĞí TX ×ß DMA */
-    USART_Cmd(WAVE_DUMP_UART, ENABLE);                       /* Ê¹ÄÜ´®¿Ú */
+    USART_DMACmd(WAVE_DUMP_UART, USART_DMAReq_Tx, ENABLE);   /* å…è®¸ TX èµ° DMA */
+    USART_Cmd(WAVE_DUMP_UART, ENABLE);                       /* ä½¿èƒ½ä¸²å£ */
 }
 
 /*-----------------------------------------------------------
   Function:      cfg_dma
-  Description:   ÅäÖÃ DMA2 Stream7 / Channel4£¬°Ñ g_frame °áµ½ USART1->DR¡£
-                ÆÕÍ¨Ä£Ê½£¨·ÇÑ­»·£©£¬Ã¿Ö¡°áÔË WAVE_DUMP_FRAME_SIZE ×Ö½Ú¡£
+  Description:   é…ç½® DMA2 Stream7 / Channel4ï¼ŒæŠŠ g_frame æ¬åˆ° USART1->DRã€‚
+                æ™®é€šæ¨¡å¼ï¼ˆéå¾ªç¯ï¼‰ï¼Œæ¯å¸§æ¬è¿ WAVE_DUMP_FRAME_SIZE å­—èŠ‚ã€‚
   Calls:         RCC_AHB1PeriphClockCmd / DMA_Init
   Called By:     WaveDump_Init
-  Input:         ÎŞ
-  Output:        ÎŞ
-  Return:        ÎŞ
-  Others:        DMA2 Stream2/Channel1 ÒÑ±» fastcap Õ¼ÓÃ£¬±¾Ä£¿éÓÃµÄÊÇ Stream7£¬
-                Á½ÕßÊÇ²»Í¬µÄÁ÷£¬¿ÉÒÔÍ¬Ê±¹¤×÷¡£
+  Input:         æ— 
+  Output:        æ— 
+  Return:        æ— 
+  Others:        DMA2 Stream2/Channel1 å·²è¢« fastcap å ç”¨ï¼Œæœ¬æ¨¡å—ç”¨çš„æ˜¯ Stream7ï¼Œ
+                ä¸¤è€…æ˜¯ä¸åŒçš„æµï¼Œå¯ä»¥åŒæ—¶å·¥ä½œã€‚
 -----------------------------------------------------------*/
 static void cfg_dma(void)
 {
-    DMA_InitTypeDef dma = {0};   /* ÇåÁã£¬±ÜÃâÎ´¸³Öµ×Ö¶ÎÁôÏÂÀ¬»ø */
+    DMA_InitTypeDef dma = {0};   /* æ¸…é›¶ï¼Œé¿å…æœªèµ‹å€¼å­—æ®µç•™ä¸‹åƒåœ¾ */
 
-    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE);   /* ´ò¿ª DMA2 Ê±ÖÓ */
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA2, ENABLE);   /* æ‰“å¼€ DMA2 æ—¶é’Ÿ */
 
-    dma.DMA_Channel            = WAVE_DUMP_DMA_CHANNEL;                         /* Í¨µÀ 4 */
-    dma.DMA_PeripheralBaseAddr = (uint32_t)(uintptr_t)&(WAVE_DUMP_UART->DR);    /* ÍâÉè¶Ë = USART1 Êı¾İ¼Ä´æÆ÷ */
-    dma.DMA_Memory0BaseAddr    = (uint32_t)(uintptr_t)g_frame;                  /* ÄÚ´æ¶Ë = Ö¡»º³å */
-    dma.DMA_DIR                = DMA_DIR_MemoryToPeripheral;                    /* ÄÚ´æµ½ÍâÉè */
-    dma.DMA_BufferSize         = WAVE_DUMP_FRAME_SIZE;                          /* Ò»´Î°áÒ»ÕûÖ¡ */
-    dma.DMA_PeripheralInc      = DMA_PeripheralInc_Disable;                     /* ÍâÉèµØÖ·¹Ì¶¨ */
-    dma.DMA_MemoryInc          = DMA_MemoryInc_Enable;                          /* ÄÚ´æµØÖ·µİÔö */
-    dma.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;                   /* ÍâÉè°´×Ö½Ú */
-    dma.DMA_MemoryDataSize     = DMA_MemoryDataSize_Byte;                       /* ÄÚ´æ°´×Ö½Ú */
-    dma.DMA_Mode               = DMA_Mode_Normal;                               /* ÆÕÍ¨Ä£Ê½£¬·¢Íê¾ÍÍ£ */
-    dma.DMA_Priority           = DMA_Priority_Medium;                           /* ÖĞµÈÓÅÏÈ¼¶£¬²»ÇÀ ADC */
-    dma.DMA_FIFOMode           = DMA_FIFOMode_Disable;                          /* ²»ÓÃ FIFO */
-    dma.DMA_FIFOThreshold      = DMA_FIFOThreshold_HalfFull;                    /* FIFO ¹Ø±ÕÊ±¸ÃÖµÎŞÓ°Ïì */
-    dma.DMA_MemoryBurst        = DMA_MemoryBurst_Single;                        /* µ¥´Î´«Êä */
-    dma.DMA_PeripheralBurst    = DMA_PeripheralBurst_Single;                    /* µ¥´Î´«Êä */
-    DMA_Init(WAVE_DUMP_DMA_STREAM, &dma);                                       /* Ğ´Èë¼Ä´æÆ÷ */
+    dma.DMA_Channel            = WAVE_DUMP_DMA_CHANNEL;                         /* é€šé“ 4 */
+    dma.DMA_PeripheralBaseAddr = (uint32_t)(uintptr_t)&(WAVE_DUMP_UART->DR);    /* å¤–è®¾ç«¯ = USART1 æ•°æ®å¯„å­˜å™¨ */
+    dma.DMA_Memory0BaseAddr    = (uint32_t)(uintptr_t)g_frame;                  /* å†…å­˜ç«¯ = å¸§ç¼“å†² */
+    dma.DMA_DIR                = DMA_DIR_MemoryToPeripheral;                    /* å†…å­˜åˆ°å¤–è®¾ */
+    dma.DMA_BufferSize         = WAVE_DUMP_FRAME_SIZE;                          /* ä¸€æ¬¡æ¬ä¸€æ•´å¸§ */
+    dma.DMA_PeripheralInc      = DMA_PeripheralInc_Disable;                     /* å¤–è®¾åœ°å€å›ºå®š */
+    dma.DMA_MemoryInc          = DMA_MemoryInc_Enable;                          /* å†…å­˜åœ°å€é€’å¢ */
+    dma.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;                   /* å¤–è®¾æŒ‰å­—èŠ‚ */
+    dma.DMA_MemoryDataSize     = DMA_MemoryDataSize_Byte;                       /* å†…å­˜æŒ‰å­—èŠ‚ */
+    dma.DMA_Mode               = DMA_Mode_Normal;                               /* æ™®é€šæ¨¡å¼ï¼Œå‘å®Œå°±åœ */
+    dma.DMA_Priority           = DMA_Priority_Medium;                           /* ä¸­ç­‰ä¼˜å…ˆçº§ï¼Œä¸æŠ¢ ADC */
+    dma.DMA_FIFOMode           = DMA_FIFOMode_Disable;                          /* ä¸ç”¨ FIFO */
+    dma.DMA_FIFOThreshold      = DMA_FIFOThreshold_HalfFull;                    /* FIFO å…³é—­æ—¶è¯¥å€¼æ— å½±å“ */
+    dma.DMA_MemoryBurst        = DMA_MemoryBurst_Single;                        /* å•æ¬¡ä¼ è¾“ */
+    dma.DMA_PeripheralBurst    = DMA_PeripheralBurst_Single;                    /* å•æ¬¡ä¼ è¾“ */
+    DMA_Init(WAVE_DUMP_DMA_STREAM, &dma);                                       /* å†™å…¥å¯„å­˜å™¨ */
 }
 
 /*-----------------------------------------------------------
   Function:      put_u16
-  Description:   ÒÔĞ¡¶ËË³Ğò°Ñ 16 Î»ÕûÊıĞ´½ø×Ö½Ú»º³å¡£
-  Calls:         ÎŞ
+  Description:   ä»¥å°ç«¯é¡ºåºæŠŠ 16 ä½æ•´æ•°å†™è¿›å­—èŠ‚ç¼“å†²ã€‚
+  Calls:         æ— 
   Called By:     build_frame
-  Input:         dst£ºÄ¿±êµØÖ·£»value£º´ıĞ´ÈëµÄÖµ
-  Output:        ÎŞ
-  Return:        ÎŞ
-  Others:        ÉÏÎ»»ú°´Ğ¡¶Ë½âÎö£¬Á½±ß±ØĞëÒ»ÖÂ¡£
+  Input:         dstï¼šç›®æ ‡åœ°å€ï¼›valueï¼šå¾…å†™å…¥çš„å€¼
+  Output:        æ— 
+  Return:        æ— 
+  Others:        ä¸Šä½æœºæŒ‰å°ç«¯è§£æï¼Œä¸¤è¾¹å¿…é¡»ä¸€è‡´ã€‚
 -----------------------------------------------------------*/
 static void put_u16(uint8_t *dst, uint16_t value)
 {
-    dst[0] = (uint8_t)(value & 0xFFU);          /* µÍ×Ö½ÚÔÚÇ° */
-    dst[1] = (uint8_t)((value >> 8) & 0xFFU);   /* ¸ß×Ö½ÚÔÚºó */
+    dst[0] = (uint8_t)(value & 0xFFU);          /* ä½å­—èŠ‚åœ¨å‰ */
+    dst[1] = (uint8_t)((value >> 8) & 0xFFU);   /* é«˜å­—èŠ‚åœ¨å */
 }
 
 /*-----------------------------------------------------------
   Function:      put_u32
-  Description:   ÒÔĞ¡¶ËË³Ğò°Ñ 32 Î»ÕûÊıĞ´½ø×Ö½Ú»º³å¡£
-  Calls:         ÎŞ
+  Description:   ä»¥å°ç«¯é¡ºåºæŠŠ 32 ä½æ•´æ•°å†™è¿›å­—èŠ‚ç¼“å†²ã€‚
+  Calls:         æ— 
   Called By:     build_frame
-  Input:         dst£ºÄ¿±êµØÖ·£»value£º´ıĞ´ÈëµÄÖµ
-  Output:        ÎŞ
-  Return:        ÎŞ
-  Others:        ÎŞ
+  Input:         dstï¼šç›®æ ‡åœ°å€ï¼›valueï¼šå¾…å†™å…¥çš„å€¼
+  Output:        æ— 
+  Return:        æ— 
+  Others:        æ— 
 -----------------------------------------------------------*/
 static void put_u32(uint8_t *dst, uint32_t value)
 {
-    dst[0] = (uint8_t)(value & 0xFFU);          /* µÚ 1 ×Ö½Ú */
-    dst[1] = (uint8_t)((value >> 8) & 0xFFU);   /* µÚ 2 ×Ö½Ú */
-    dst[2] = (uint8_t)((value >> 16) & 0xFFU);  /* µÚ 3 ×Ö½Ú */
-    dst[3] = (uint8_t)((value >> 24) & 0xFFU);  /* µÚ 4 ×Ö½Ú */
+    dst[0] = (uint8_t)(value & 0xFFU);          /* ç¬¬ 1 å­—èŠ‚ */
+    dst[1] = (uint8_t)((value >> 8) & 0xFFU);   /* ç¬¬ 2 å­—èŠ‚ */
+    dst[2] = (uint8_t)((value >> 16) & 0xFFU);  /* ç¬¬ 3 å­—èŠ‚ */
+    dst[3] = (uint8_t)((value >> 24) & 0xFFU);  /* ç¬¬ 4 å­—èŠ‚ */
 }
 
 /*-----------------------------------------------------------
   Function:      build_frame
-  Description:   °´ wave_dump.h µÄÖ¡¸ñÊ½°ÑÒ»Ö¡Êı¾İ×é×°½ø g_frame¡£
+  Description:   æŒ‰ wave_dump.h çš„å¸§æ ¼å¼æŠŠä¸€å¸§æ•°æ®ç»„è£…è¿› g_frameã€‚
   Calls:         put_u16 / put_u32 / m2_crc / fastcap_get_last_block
   Called By:     WaveDump_Poll
-  Input:         sample£º±¾Ö¡µÄÍ³¼Æ½á¹û£¨Ö±Á÷¡¢¼«Öµ¡¢×´Ì¬Î»£©
-  Output:        g_frame ±»ÕûÖ¡ÌîÂú
-  Return:        ÎŞ
-  Others:        sample Îª NULL Ê±°´È«ÁãÌîĞ´£¬²»ÔÚÕâÀï×ö¿ÕÖ¸Õë±£»¤£¬
-                 ÒòÎªÉÏ²ã WaveDump_Poll ÒÑ¾­ÅĞ¹ı¡£
+  Input:         sampleï¼šæœ¬å¸§çš„ç»Ÿè®¡ç»“æœï¼ˆç›´æµã€æå€¼ã€çŠ¶æ€ä½ï¼‰
+  Output:        g_frame è¢«æ•´å¸§å¡«æ»¡
+  Return:        æ— 
+  Others:        sample ä¸º NULL æ—¶æŒ‰å…¨é›¶å¡«å†™ï¼Œä¸åœ¨è¿™é‡Œåšç©ºæŒ‡é’ˆä¿æŠ¤ï¼Œ
+                 å› ä¸ºä¸Šå±‚ WaveDump_Poll å·²ç»åˆ¤è¿‡ã€‚
 -----------------------------------------------------------*/
 static void build_frame(const FastcapSample *sample)
 {
-    const uint16_t *block;   /* ×î½üÒ»Ö¡ 200 µãÔ­Ê¼Ñù±¾ */
-    uint32_t i;              /* Ñù±¾Ë÷Òı */
-    uint16_t crc;            /* ¼ÆËã³öµÄ CRC */
+    const uint16_t *block;   /* æœ€è¿‘ä¸€å¸§ 200 ç‚¹åŸå§‹æ ·æœ¬ */
+    uint32_t i;              /* æ ·æœ¬ç´¢å¼• */
+    uint16_t crc;            /* è®¡ç®—å‡ºçš„ CRC */
 
-    block = fastcap_get_last_block();   /* È¡Èí¼ş¿ìÕÕ£¬³¤¶È¹Ì¶¨ 200 µã */
+    block = fastcap_get_last_block();   /* å–è½¯ä»¶å¿«ç…§ï¼Œé•¿åº¦å›ºå®š 200 ç‚¹ */
 
-    g_frame[WAVE_DUMP_OFS_SYNC0]   = WAVE_DUMP_SYNC0;                       /* Ö¡Í·µÚ 1 ×Ö½Ú */
-    g_frame[WAVE_DUMP_OFS_SYNC1]   = WAVE_DUMP_SYNC1;                       /* Ö¡Í·µÚ 2 ×Ö½Ú */
-    g_frame[WAVE_DUMP_OFS_VERSION] = WAVE_DUMP_VERSION;                     /* °æ±¾ºÅ */
-    put_u16(&g_frame[WAVE_DUMP_OFS_POINTS], WAVE_DUMP_POINTS);              /* µãÊı = 200 */
-    put_u32(&g_frame[WAVE_DUMP_OFS_SEQ], g_seq);                            /* Ö¡ĞòºÅ */
-    g_frame[WAVE_DUMP_OFS_STATUS] = sample->status;                         /* fastcap ×´Ì¬Î» */
-    put_u16(&g_frame[WAVE_DUMP_OFS_DC], sample->dc_raw);                    /* Ö±Á÷·ÖÁ¿ */
-    put_u16(&g_frame[WAVE_DUMP_OFS_MIN], sample->raw_min);                  /* Ö¡ÄÚ×îĞ¡Öµ */
-    put_u16(&g_frame[WAVE_DUMP_OFS_MAX], sample->raw_max);                  /* Ö¡ÄÚ×î´óÖµ */
+    g_frame[WAVE_DUMP_OFS_SYNC0]   = WAVE_DUMP_SYNC0;                       /* å¸§å¤´ç¬¬ 1 å­—èŠ‚ */
+    g_frame[WAVE_DUMP_OFS_SYNC1]   = WAVE_DUMP_SYNC1;                       /* å¸§å¤´ç¬¬ 2 å­—èŠ‚ */
+    g_frame[WAVE_DUMP_OFS_VERSION] = WAVE_DUMP_VERSION;                     /* ç‰ˆæœ¬å· */
+    put_u16(&g_frame[WAVE_DUMP_OFS_POINTS], WAVE_DUMP_POINTS);              /* ç‚¹æ•° = 200 */
+    put_u32(&g_frame[WAVE_DUMP_OFS_SEQ], g_seq);                            /* å¸§åºå· */
+    g_frame[WAVE_DUMP_OFS_STATUS] = sample->status;                         /* fastcap çŠ¶æ€ä½ */
+    put_u16(&g_frame[WAVE_DUMP_OFS_DC], sample->dc_raw);                    /* ç›´æµåˆ†é‡ */
+    put_u16(&g_frame[WAVE_DUMP_OFS_MIN], sample->raw_min);                  /* å¸§å†…æœ€å°å€¼ */
+    put_u16(&g_frame[WAVE_DUMP_OFS_MAX], sample->raw_max);                  /* å¸§å†…æœ€å¤§å€¼ */
 
-    for (i = 0U; i < WAVE_DUMP_POINTS; i++)   /* ÖğµãĞ´ 200 ¸öÔ­Ê¼Âë */
+    for (i = 0U; i < WAVE_DUMP_POINTS; i++)   /* é€ç‚¹å†™ 200 ä¸ªåŸå§‹ç  */
     {
-        put_u16(&g_frame[WAVE_DUMP_OFS_DATA + (2U * i)], block[i]);         /* Ã¿µã 2 ×Ö½Ú */
+        put_u16(&g_frame[WAVE_DUMP_OFS_DATA + (2U * i)], block[i]);         /* æ¯ç‚¹ 2 å­—èŠ‚ */
     }
 
-    crc = m2_crc(&g_frame[2], WAVE_DUMP_CRC_SPAN);                          /* ¸²¸Ç°æ±¾µ½×îºóÒ»¸öµã */
-    put_u16(&g_frame[WAVE_DUMP_OFS_CRC], crc);                              /* Ğ´ CRC */
+    crc = m2_crc(&g_frame[2], WAVE_DUMP_CRC_SPAN);                          /* è¦†ç›–ç‰ˆæœ¬åˆ°æœ€åä¸€ä¸ªç‚¹ */
+    put_u16(&g_frame[WAVE_DUMP_OFS_CRC], crc);                              /* å†™ CRC */
 
-    g_seq++;   /* ĞòºÅµİÔö£¬¹©ÉÏÎ»»ú·¢ÏÖ¶ªÖ¡ */
+    g_seq++;   /* åºå·é€’å¢ï¼Œä¾›ä¸Šä½æœºå‘ç°ä¸¢å¸§ */
 }
 
 /*-----------------------------------------------------------
   Function:      start_send
-  Description:   Æô¶¯Ò»´Î DMA ·¢ËÍ¡£ÈôÉÏÒ»Ö¡»¹Ã»·¢ÍêÔòÖ±½Ó¶ªÆú±¾Ö¡¡£
+  Description:   å¯åŠ¨ä¸€æ¬¡ DMA å‘é€ã€‚è‹¥ä¸Šä¸€å¸§è¿˜æ²¡å‘å®Œåˆ™ç›´æ¥ä¸¢å¼ƒæœ¬å¸§ã€‚
   Calls:         DMA_GetCmdStatus / DMA_Cmd / DMA_ClearFlag / DMA_SetCurrDataCounter
   Called By:     WaveDump_Poll
-  Input:         ÎŞ
-  Output:        ÎŞ
-  Return:        ÎŞ
-  Others:        Ã¿ 100 ms Ö»ÓĞ 36 ms ÔÚ·¢ËÍ£¬Õı³£Çé¿öÏÂ²»»á³öÏÖÃ¦×´Ì¬£»
-                 Ò»µ©³öÏÖ£¬ËµÃ÷²¨ÌØÂÊ±»¸ÄµÍÁË»òÕßÖ÷Ñ­»·Ê±Ğò±äÁË£¬count »á±©Â¶Ëü¡£
+  Input:         æ— 
+  Output:        æ— 
+  Return:        æ— 
+  Others:        æ¯ 100 ms åªæœ‰ 36 ms åœ¨å‘é€ï¼Œæ­£å¸¸æƒ…å†µä¸‹ä¸ä¼šå‡ºç°å¿™çŠ¶æ€ï¼›
+                 ä¸€æ—¦å‡ºç°ï¼Œè¯´æ˜æ³¢ç‰¹ç‡è¢«æ”¹ä½äº†æˆ–è€…ä¸»å¾ªç¯æ—¶åºå˜äº†ï¼Œcount ä¼šæš´éœ²å®ƒã€‚
 -----------------------------------------------------------*/
 static void start_send(void)
 {
-    if (DMA_GetCmdStatus(WAVE_DUMP_DMA_STREAM) != DISABLE)   /* ÉÏÒ»Ö¡»¹ÔÚ°áÔË */
+    if (DMA_GetCmdStatus(WAVE_DUMP_DMA_STREAM) != DISABLE)   /* ä¸Šä¸€å¸§è¿˜åœ¨æ¬è¿ */
     {
-        g_dropped++;   /* ÈçÊµ¼ÆÊı£¬²»¸²¸ÇÕıÔÚ·¢ËÍµÄ»º³å */
-        return;        /* ±¾Ö¡·ÅÆú */
+        g_dropped++;   /* å¦‚å®è®¡æ•°ï¼Œä¸è¦†ç›–æ­£åœ¨å‘é€çš„ç¼“å†² */
+        return;        /* æœ¬å¸§æ”¾å¼ƒ */
     }
 
-    DMA_ClearFlag(WAVE_DUMP_DMA_STREAM, WAVE_DUMP_DMA_FLAG_TC);   /* ÇåµôÉÏÒ»ÂÖµÄÍê³É±êÖ¾ */
-    DMA_SetCurrDataCounter(WAVE_DUMP_DMA_STREAM, WAVE_DUMP_FRAME_SIZE);   /* ÖØ×°´«Êä³¤¶È */
-    DMA_Cmd(WAVE_DUMP_DMA_STREAM, ENABLE);   /* Æô¶¯±¾´Î°áÔË */
+    DMA_ClearFlag(WAVE_DUMP_DMA_STREAM, WAVE_DUMP_DMA_FLAG_TC);   /* æ¸…æ‰ä¸Šä¸€è½®çš„å®Œæˆæ ‡å¿— */
+    DMA_SetCurrDataCounter(WAVE_DUMP_DMA_STREAM, WAVE_DUMP_FRAME_SIZE);   /* é‡è£…ä¼ è¾“é•¿åº¦ */
+    DMA_Cmd(WAVE_DUMP_DMA_STREAM, ENABLE);   /* å¯åŠ¨æœ¬æ¬¡æ¬è¿ */
 
-    g_sent++;   /* ³É¹¦Æô¶¯Ò»´Î£¬¼ÆÊı¼ÓÒ» */
+    g_sent++;   /* æˆåŠŸå¯åŠ¨ä¸€æ¬¡ï¼Œè®¡æ•°åŠ ä¸€ */
 }
 
 /*-----------------------------------------------------------
   Function:      WaveDump_Init
-  Description:   ³õÊ¼»¯²¨ĞÎµ¼³öÍ¨µÀ£ºÒı½Å¡¢´®¿Ú¡¢DMA£¬²¢¸´Î»Í³¼ÆÓë¿ª¹Ø¡£
+  Description:   åˆå§‹åŒ–æ³¢å½¢å¯¼å‡ºé€šé“ï¼šå¼•è„šã€ä¸²å£ã€DMAï¼Œå¹¶å¤ä½ç»Ÿè®¡ä¸å¼€å…³ã€‚
   Calls:         cfg_gpio / cfg_uart / cfg_dma
-  Called By:     main£¨ÉÏµç³õÊ¼»¯½×¶Î£¬Î»ÓÚ fastcap_init() Ö®ºó£©
-  Input:         ÎŞ
-  Output:        ÎŞ
-  Return:        ÎŞ
-  Others:        ±ØĞëÔÚ fastcap_init() Ö®ºóµ÷ÓÃ£º±¾Ä£¿éµÄ build_frame() ÒÀÀµ
-                 fastcap_get_last_block() ·µ»ØÓĞĞ§»º³å¡£ÖØ¸´µ÷ÓÃÊÇÃİµÈµÄ¡£
+  Called By:     mainï¼ˆä¸Šç”µåˆå§‹åŒ–é˜¶æ®µï¼Œä½äº fastcap_init() ä¹‹åï¼‰
+  Input:         æ— 
+  Output:        æ— 
+  Return:        æ— 
+  Others:        å¿…é¡»åœ¨ fastcap_init() ä¹‹åè°ƒç”¨ï¼šæœ¬æ¨¡å—çš„ build_frame() ä¾èµ–
+                 fastcap_get_last_block() è¿”å›æœ‰æ•ˆç¼“å†²ã€‚é‡å¤è°ƒç”¨æ˜¯å¹‚ç­‰çš„ã€‚
 -----------------------------------------------------------*/
 void WaveDump_Init(void)
 {
-    if (g_inited != 0U)   /* ÒÑ¾­³õÊ¼»¯¹ı */
+    if (g_inited != 0U)   /* å·²ç»åˆå§‹åŒ–è¿‡ */
     {
-        return;           /* Ö±½Ó·µ»Ø£¬±ÜÃâÖØ¸´ÅäÖÃ´®¿Ú´òÂÒÕıÔÚ·¢ËÍµÄÖ¡ */
+        return;           /* ç›´æ¥è¿”å›ï¼Œé¿å…é‡å¤é…ç½®ä¸²å£æ‰“ä¹±æ­£åœ¨å‘é€çš„å¸§ */
     }
 
     cfg_gpio();   /* PA9 -> USART1_TX */
-    cfg_uart();   /* 115200 8N1£¬Ö»·¢ */
-    cfg_dma();    /* DMA2 Stream7 °áÔË */
+    cfg_uart();   /* 115200 8N1ï¼Œåªå‘ */
+    cfg_dma();    /* DMA2 Stream7 æ¬è¿ */
 
-    g_seq        = 0UL;   /* Ö¡ĞòºÅ´Ó 0 ¿ªÊ¼ */
-    g_sent       = 0UL;   /* ÒÑ·¢ËÍÇåÁã */
-    g_dropped    = 0UL;   /* ¶ªÆú¼ÆÊıÇåÁã */
-    g_decimCount = 0U;    /* ·ÖÆµ¼ÆÊıÇåÁã */
-    g_enabled    = 1U;    /* ÉÏµçÄ¬ÈÏÔÊĞíµ¼³ö */
-    g_inited     = 1U;    /* ±ê¼Ç³õÊ¼»¯Íê³É */
+    g_seq        = 0UL;   /* å¸§åºå·ä» 0 å¼€å§‹ */
+    g_sent       = 0UL;   /* å·²å‘é€æ¸…é›¶ */
+    g_dropped    = 0UL;   /* ä¸¢å¼ƒè®¡æ•°æ¸…é›¶ */
+    g_decimCount = 0U;    /* åˆ†é¢‘è®¡æ•°æ¸…é›¶ */
+    g_enabled    = 1U;    /* ä¸Šç”µé»˜è®¤å…è®¸å¯¼å‡º */
+    g_inited     = 1U;    /* æ ‡è®°åˆå§‹åŒ–å®Œæˆ */
 }
 
 /*-----------------------------------------------------------
   Function:      WaveDump_Poll
-  Description:   Ö÷Ñ­»·µ÷ÓÃ¡£Ã¿ÊÕµ½Ò»Ö¡ĞÂ²ÉÑù¾ÍÀÛ¼Ó·ÖÆµ¼ÆÊı£¬
-                Âú WAVE_DUMP_DECIM ´Î£¨¼´ 100 ms£©²Å×é×°²¢·¢ËÍÒ»Ö¡¡£
+  Description:   ä¸»å¾ªç¯è°ƒç”¨ã€‚æ¯æ”¶åˆ°ä¸€å¸§æ–°é‡‡æ ·å°±ç´¯åŠ åˆ†é¢‘è®¡æ•°ï¼Œ
+                æ»¡ WAVE_DUMP_DECIM æ¬¡ï¼ˆå³ 100 msï¼‰æ‰ç»„è£…å¹¶å‘é€ä¸€å¸§ã€‚
   Calls:         build_frame / start_send
-  Called By:     main£¨fastcap_poll() ·µ»Ø 1 Ê±µ÷ÓÃ£©
-  Input:         dutyPercent£ºµ±Ç°Õ¼¿Õ±È£¬0 ±íÊ¾Í£×ª£»sample£º±¾Ö¡Í³¼Æ½á¹û
-  Output:        ÎŞ
-  Return:        ÎŞ
-  Others:        1) Õ¼¿Õ±ÈÎª 0 Ê±²»µ¼³ö£ºÍ£×ªÊ±µçÁ÷ºãÎªÁã£¬²¨ĞÎÃ»ÓĞ·ÖÎö¼ÛÖµ£»
-                 2) sample Îª NULL Ê±Ö±½Ó·µ»Ø£¬²»½øÈë×é×°Á÷³Ì¡£
+  Called By:     mainï¼ˆfastcap_poll() è¿”å› 1 æ—¶è°ƒç”¨ï¼‰
+  Input:         dutyPercentï¼šå½“å‰å ç©ºæ¯”ï¼Œ0 è¡¨ç¤ºåœè½¬ï¼›sampleï¼šæœ¬å¸§ç»Ÿè®¡ç»“æœ
+  Output:        æ— 
+  Return:        æ— 
+  Others:        1) å ç©ºæ¯”ä¸º 0 æ—¶ä¸å¯¼å‡ºï¼šåœè½¬æ—¶ç”µæµæ’ä¸ºé›¶ï¼Œæ³¢å½¢æ²¡æœ‰åˆ†æä»·å€¼ï¼›
+                 2) sample ä¸º NULL æ—¶ç›´æ¥è¿”å›ï¼Œä¸è¿›å…¥ç»„è£…æµç¨‹ã€‚
 -----------------------------------------------------------*/
 void WaveDump_Poll(uint8_t dutyPercent, const FastcapSample *sample)
 {
-    if ((g_inited == 0U) || (g_enabled == 0U))   /* Î´³õÊ¼»¯»òÒÑ±»¹Ø±Õ */
+    if ((g_inited == 0U) || (g_enabled == 0U))   /* æœªåˆå§‹åŒ–æˆ–å·²è¢«å…³é—­ */
     {
-        return;                                   /* ²»·¢ */
+        return;                                   /* ä¸å‘ */
     }
-    if (dutyPercent == 0U)   /* µç»úÍ£×ª */
+    if (dutyPercent == 0U)   /* ç”µæœºåœè½¬ */
     {
-        g_decimCount = 0U;   /* ·ÖÆµ¼ÆÊı¹éÁã£¬ÏÂ´ÎÆô¶¯´ÓÍêÕûÖÜÆÚ¿ªÊ¼ */
-        return;              /* Í£×ª²¨ĞÎ²»µ¼³ö */
+        g_decimCount = 0U;   /* åˆ†é¢‘è®¡æ•°å½’é›¶ï¼Œä¸‹æ¬¡å¯åŠ¨ä»å®Œæ•´å‘¨æœŸå¼€å§‹ */
+        return;              /* åœè½¬æ³¢å½¢ä¸å¯¼å‡º */
     }
-    if (sample == NULL)      /* ÉÏ²ãÃ»¸øÍ³¼Æ½á¹û */
+    if (sample == NULL)      /* ä¸Šå±‚æ²¡ç»™ç»Ÿè®¡ç»“æœ */
     {
-        return;              /* ²»·¢ */
+        return;              /* ä¸å‘ */
     }
 
-    if (g_decimCount < (WAVE_DUMP_DECIM - 1U))   /* »¹Ã»ÔÜ¹»Ò»¸öµ¼³öÖÜÆÚ */
+    if (g_decimCount < (WAVE_DUMP_DECIM - 1U))   /* è¿˜æ²¡æ”’å¤Ÿä¸€ä¸ªå¯¼å‡ºå‘¨æœŸ */
     {
-        g_decimCount++;   /* ¼ÆÊı¼ÓÒ»£¬µÈÏÂÒ»Ö¡ */
-        return;           /* ±¾Ö¡²»µ¼³ö */
+        g_decimCount++;   /* è®¡æ•°åŠ ä¸€ï¼Œç­‰ä¸‹ä¸€å¸§ */
+        return;           /* æœ¬å¸§ä¸å¯¼å‡º */
     }
-    g_decimCount = 0U;   /* ÔÜÂú£¬ÖØĞÂ¿ªÊ¼¼ÆÊı */
+    g_decimCount = 0U;   /* æ”’æ»¡ï¼Œé‡æ–°å¼€å§‹è®¡æ•° */
 
-    build_frame(sample);   /* ×é×°ÕûÖ¡ */
-    start_send();          /* ½»¸ø DMA ·¢ËÍ */
+    build_frame(sample);   /* ç»„è£…æ•´å¸§ */
+    start_send();          /* äº¤ç»™ DMA å‘é€ */
 }
 
 /*-----------------------------------------------------------
   Function:      WaveDump_SetEnabled
-  Description:   ´ò¿ª»ò¹Ø±Õ²¨ĞÎµ¼³ö¡£
-  Calls:         ÎŞ
-  Called By:     µ÷ÊÔÁ÷³Ì
-  Input:         enabled£º0 = ¹Ø±Õ£¬·Ç 0 = ´ò¿ª
-  Output:        ÎŞ
-  Return:        ÎŞ
-  Others:        ¹Ø±Õºó²»ÔÙ×é×°ĞÂÖ¡£¬µ«ÒÑ¾­½»¸ø DMA µÄÄÇÒ»Ö¡ÈÔ»á·¢Íê¡£
+  Description:   æ‰“å¼€æˆ–å…³é—­æ³¢å½¢å¯¼å‡ºã€‚
+  Calls:         æ— 
+  Called By:     è°ƒè¯•æµç¨‹
+  Input:         enabledï¼š0 = å…³é—­ï¼Œé 0 = æ‰“å¼€
+  Output:        æ— 
+  Return:        æ— 
+  Others:        å…³é—­åä¸å†ç»„è£…æ–°å¸§ï¼Œä½†å·²ç»äº¤ç»™ DMA çš„é‚£ä¸€å¸§ä»ä¼šå‘å®Œã€‚
 -----------------------------------------------------------*/
 void WaveDump_SetEnabled(uint8_t enabled)
 {
-    g_enabled = (enabled != 0U) ? 1U : 0U;   /* ¹éÒ»»¯³É 0 / 1 */
-    g_decimCount = 0U;                        /* ÇĞ»»Ê±ÖØÖÃ·ÖÆµÏàÎ» */
+    g_enabled = (enabled != 0U) ? 1U : 0U;   /* å½’ä¸€åŒ–æˆ 0 / 1 */
+    g_decimCount = 0U;                        /* åˆ‡æ¢æ—¶é‡ç½®åˆ†é¢‘ç›¸ä½ */
 }
 
 /*-----------------------------------------------------------
   Function:      WaveDump_IsEnabled
-  Description:   ²éÑ¯µ±Ç°ÊÇ·ñÔÊĞíµ¼³ö¡£
-  Calls:         ÎŞ
-  Called By:     µ÷ÊÔÁ÷³Ì
-  Input:         ÎŞ
-  Output:        ÎŞ
-  Return:        1 = ÔÊĞíµ¼³ö£¬0 = ÒÑ¹Ø±Õ
-  Others:        ÎŞ
+  Description:   æŸ¥è¯¢å½“å‰æ˜¯å¦å…è®¸å¯¼å‡ºã€‚
+  Calls:         æ— 
+  Called By:     è°ƒè¯•æµç¨‹
+  Input:         æ— 
+  Output:        æ— 
+  Return:        1 = å…è®¸å¯¼å‡ºï¼Œ0 = å·²å…³é—­
+  Others:        æ— 
 -----------------------------------------------------------*/
 uint8_t WaveDump_IsEnabled(void)
 {
-    return g_enabled;   /* ·µ»Ø¿ª¹Ø×´Ì¬ */
+    return g_enabled;   /* è¿”å›å¼€å…³çŠ¶æ€ */
 }
 
 /*-----------------------------------------------------------
   Function:      WaveDump_GetSent
-  Description:   È¡ÒÑ³É¹¦Æô¶¯·¢ËÍµÄÖ¡Êı¡£
-  Calls:         ÎŞ
-  Called By:     µ÷ÊÔÁ÷³Ì
-  Input:         ÎŞ
-  Output:        ÎŞ
-  Return:        ÀÛ¼ÆÖ¡Êı
-  Others:        ÓëÉÏÎ»»úÊÕµ½µÄÖ¡Êı±È¶Ô£¬¿ÉÒÔÅĞ¶ÏÓĞÃ»ÓĞ¶ª°ü¡£
+  Description:   å–å·²æˆåŠŸå¯åŠ¨å‘é€çš„å¸§æ•°ã€‚
+  Calls:         æ— 
+  Called By:     è°ƒè¯•æµç¨‹
+  Input:         æ— 
+  Output:        æ— 
+  Return:        ç´¯è®¡å¸§æ•°
+  Others:        ä¸ä¸Šä½æœºæ”¶åˆ°çš„å¸§æ•°æ¯”å¯¹ï¼Œå¯ä»¥åˆ¤æ–­æœ‰æ²¡æœ‰ä¸¢åŒ…ã€‚
 -----------------------------------------------------------*/
 uint32_t WaveDump_GetSent(void)
 {
-    return g_sent;   /* ·µ»ØÀÛ¼Æ·¢ËÍÖ¡Êı */
+    return g_sent;   /* è¿”å›ç´¯è®¡å‘é€å¸§æ•° */
 }
 
 /*-----------------------------------------------------------
   Function:      WaveDump_GetDropped
-  Description:   È¡Òò DMA Ã¦¶ø±»¶ªÆúµÄÖ¡Êı¡£
-  Calls:         ÎŞ
-  Called By:     µ÷ÊÔÁ÷³Ì
-  Input:         ÎŞ
-  Output:        ÎŞ
-  Return:        ÀÛ¼Æ¶ªÆúÖ¡Êı
-  Others:        Õı³£Ó¦Îª 0£»²»Îª 0 ËµÃ÷·¢ËÍÖÜÆÚÓë²¨ÌØÂÊ²»Æ¥Åä¡£
+  Description:   å–å›  DMA å¿™è€Œè¢«ä¸¢å¼ƒçš„å¸§æ•°ã€‚
+  Calls:         æ— 
+  Called By:     è°ƒè¯•æµç¨‹
+  Input:         æ— 
+  Output:        æ— 
+  Return:        ç´¯è®¡ä¸¢å¼ƒå¸§æ•°
+  Others:        æ­£å¸¸åº”ä¸º 0ï¼›ä¸ä¸º 0 è¯´æ˜å‘é€å‘¨æœŸä¸æ³¢ç‰¹ç‡ä¸åŒ¹é…ã€‚
 -----------------------------------------------------------*/
 uint32_t WaveDump_GetDropped(void)
 {
-    return g_dropped;   /* ·µ»ØÀÛ¼Æ¶ªÆúÖ¡Êı */
+    return g_dropped;   /* è¿”å›ç´¯è®¡ä¸¢å¼ƒå¸§æ•° */
 }
