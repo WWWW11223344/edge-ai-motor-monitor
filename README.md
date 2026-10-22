@@ -102,7 +102,7 @@ firmware_stm32/            STM32F407 固件（Keil MDK 工程，可直接编译�
 
 firmware_d1mini/           D1 mini 网页监视器固件（Arduino / ESP8266）
   d1mini_telemetry.ino     入口：串口收帧、Wi-Fi 连接、HTTP 服务
-  monitor_page.h           内嵌整页 HTML（约 12.6 KB，页面全部在此，不在 STM32 侧）
+  monitor_page.h           内嵌整页 HTML（26.1 KB，页面全部在此，不在 STM32 侧）
   m2_protocol.c/h          与 STM32 同一份 42 字节帧定义与 CRC16
   status_json.cpp          状态 JSON 接口
   raw_history.c/h          原始帧环形缓冲（调试抓包用）
@@ -194,7 +194,7 @@ NanoEdge AI 模型本身占 **RAM 3668 B / Flash 3108 B**。库端 `learning_min
 1. Keil MDK 5 打开 `firmware_stm32/USER/STM32F407_Template.uvprojx`
 2. Build（或直接用 `firmware_stm32/OBJ_firmware/STM32F407_Template.hex` 烧录）
 3. 首次上电保持电机停转 → 自动完成电流零点校准（64 次平均）
-4. 按 PE3 升档起转，转起来后等 OLED 上 `Si:` 达到 100
+4. 按 PE3 升档起转，转起来后等 OLED 第 6 页的相似度 `S:` 达到 100
 
 **烧录注意**：J-Link 脚本必须带 `device STM32F407ZG`，不带时 erase 会被静默拒绝
 却照样打印 O.K.。仓库里的 `burn_final_20261021.jlink` 已经写好，
