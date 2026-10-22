@@ -402,7 +402,8 @@ int main(void)
         d.demo  = DEMO_MARK;                  /* 标记本帧含 SIM 字段 */
         d.level = level;                  /* 本帧档位 */
 
-        d.duty = DUTY_LEVEL[level]; /* 底条显示当前占空比 */
+        d.duty = DUTY_LEVEL[level]; /* 占空比：2026-10-22 起底条只显示档位号 L1/L2，
+                                     * 不再显示 "L1:58%"，这个字段仍供遥测帧与 D1 网页使用 */
 
         {                                 /* 采样区：独立作用域，隔离本轮临时变量 */
             uint32_t nowMs = Encoder_GetMs();                        /* 取一次毫秒时基 */
@@ -542,6 +543,8 @@ int main(void)
             d.similarity = (ai_monitor_has_result() != 0U) ?                         /* 有结果就用真实相似度 */
                            (float)ai_monitor_get_similarity() : 0.0f;                           /* 否则填 0 */
             d.ai_valid = ai_monitor_has_result();                                /* 屏上据此决定显示数值还是 --- */
+            ai_monitor_get_site_progress(&d.learn_done, &d.learn_total);        /* 取现场学习进度（n/m），
+                                                                                 * total 为 0 时屏上不显示进度 */
 
             if ((g_guardTrip != 0U) ||                                          /* 过流保护已动作 -> WARN */
                 (d.speed_valid == 0U) || (d.vbat_valid == 0U) ||                /* 任一数据无效 -> WARN 报警 */

@@ -2,15 +2,16 @@
   Copyright (C), 2026, 汪贤云
   FileName:    ai_monitor.c
   Author:      汪贤云
-  Version:     3.0
-  Date:        2026-10-21
+  Version:     3.1
+  Date:        2026-10-22
   Description: 板上 AI 模块：现场学习与异常检测
                （NanoEdge AI Studio Library ID 6ad8b466f4c74310b9bc146f / 模型族 ICM）。
                数据流：main.c 主循环每 100 ms 推一个 q = 转速 / 母线电压，
                feature_r 把它压成 8 点滚动峰峰值后调一次本模块；
                峰峰值序列攒满 32 点（约 3.9 s）后整窗喂给 ICM 模型；
                库自带预训练知识（learning_min_lines = 368 已在 PC 端消化），
-               上电 init(true) 后直接进入检测，输出 0~100 的相似度。
+               上电 init(true) 后先跑一段「启动现场自适应学习」，
+               把本机工况样本增量补进知识库（屏上 LRN），学满转 DET。
   Function List:
     1. ai_monitor_init()             初始化模型库
     2. ai_monitor_tick()             每个 R 点调一次（核心）
@@ -25,6 +26,9 @@
     汪贤云     2026-10-21    3.0         换用 68 号 ICM 库，输入改为 q 的 8 点滚动峰峰值
                                                 （dR 序列）；改走上电即检测 + 增量补学路线
                                                 取代「学满 64 窗再转检测」；阈值与判据不变
+    汪贤云     2026-10-22    3.1         新增「启动现场自适应学习阶段」：上电先补学
+                                                AI_MONITOR_SITE_LEARN_WINDOWS 窗再转检测，
+                                                屏上 LRN -> DET 可见；补学带相似度门限
 ***********************************************************/
 /* 【模型与输入】
  * 输入 1 个样本 x 32 点 = 32 个 float，这 32 点是 feature_r 算出来的
@@ -73,6 +77,9 @@ static uint8_t g_enabled = 1U;  /* 1 = 启用板上 AI，0 = 只采集不跑模�
 static uint8_t g_winEmpty;  /* 连续拿不到满窗的节拍数（判断电机是否停过） */
 static uint8_t g_needLearn;  /* 1 = 模型库明确要求继续学，0 = 知识已够可以检测 */
 static uint16_t g_learnLeft;  /* 本轮还要学多少个窗（库要求学习时用它兜底防死循环） */
+static uint16_t g_siteDone;  /* 启动现场自适应学习已补学的窗数（0 ~ AI_MONITOR_SITE_LEARN_WINDOWS） */
+static uint16_t g_siteSeen;  /* 补学阶段一共看过的满窗数（不管有没有补成功，用于超时兜底） */
+static uint8_t g_siteActive;  /* 1 = 还处于启动现场自适应学习阶段，0 = 已转入检测 */
 
 /*-----------------------------------------------------------
   Function:      ai_monitor_init
@@ -86,7 +93,12 @@ static uint16_t g_learnLeft;  /* 本轮还要学多少个窗（库要求学习�
                     这样上电就能检测，不必先现场学 368 个窗；
                   2) 万一库里没有预训练知识，init(true) 会失败，
                     这时退回 init(false) 从零学，并置 g_needLearn；
-                  3) 成功且不需要学则直接进入 DETECTING，否则进 LEARNING。
+                  3) 成功且不需要学则进入「启动现场自适应学习阶段」：
+                    边检测边用 learn() 增量补学本机工况样本，补满
+                    AI_MONITOR_SITE_LEARN_WINDOWS 窗后转入纯检测阶段。
+                    【为什么要有这一段】原来上电直接进检测，屏上从开机起
+                    就是 DET，看不到「学习」这个过程。补学阶段屏上显示 LRN，
+                    补学量通过 ai_monitor_get_site_progress() 报给屏显。
 -----------------------------------------------------------*/
 void ai_monitor_init(void)
 {
@@ -94,6 +106,9 @@ void ai_monitor_init(void)
 
     g_needLearn = 0U;  /* 默认认为知识已够 */
     g_learnLeft = 0U;  /* 学习配额清零 */
+    g_siteDone = 0U;  /* 现场补学计数归零 */
+    g_siteSeen = 0U;  /* 补学阶段看过的窗数归零 */
+    g_siteActive = 0U;  /* 默认不在现场补学阶段 */
 
     if (state != NEAI_OK)  /* 库里没有预训练知识，退回从零学 */
     {
@@ -119,9 +134,10 @@ void ai_monitor_init(void)
     {
         g_phase = AI_MONITOR_LEARNING;  /* 进入学习阶段 */
     }
-    else  /* 初始化成功且已有预训练知识 */
+    else  /* 初始化成功且已有预训练知识：进入启动现场自适应学习阶段 */
     {
-        g_phase = AI_MONITOR_DETECTING;  /* 直接进入检测阶段 */
+        g_siteActive = 1U;  /* 打开现场补学阶段，屏上先显示 LRN */
+        g_phase = AI_MONITOR_LEARNING;  /* 阶段显示为学习中 */
     }
 }
 
@@ -207,6 +223,43 @@ uint8_t ai_monitor_get_fill(void)
 }
 
 /*-----------------------------------------------------------
+  Function:      ai_monitor_get_site_progress
+  Description:   查询「启动现场自适应学习阶段」的进度，供屏显画 "n/m"。
+  Calls:         无
+  Called By:     main.c（填 UI_Data 的 learn_done / learn_total）
+  Input:         done   —— 输出参数，已补学的窗数
+                 total  —— 输出参数，目标窗数（0 表示当前不在该阶段）
+  Output:        修改 *done 与 *total
+  Return:        无
+  Others:        两个指针都必须非空，函数内部已判空，不会崩。
+-----------------------------------------------------------*/
+void ai_monitor_get_site_progress(uint8_t *done, uint8_t *total)
+{
+    if (done != NULL)  /* 判空，避免调用方传 NULL 时崩 */
+    {
+        if (g_siteActive != 0U)  /* 还在补学阶段 */
+        {
+            *done = (uint8_t)((g_siteDone > 255U) ? 255U : g_siteDone);  /* 已补学窗数 */
+        }
+        else  /* 已转入检测阶段 */
+        {
+            *done = 0U;  /* 没有进行中的补学 */
+        }
+    }
+    if (total != NULL)  /* 判空 */
+    {
+        if (g_siteActive != 0U)  /* 还在补学阶段才报目标窗数 */
+        {
+            *total = (uint8_t)AI_MONITOR_SITE_LEARN_WINDOWS;  /* 目标窗数 */
+        }
+        else  /* 已转入检测阶段：报 0，屏上据此把进度格清掉 */
+        {
+            *total = 0U;  /* 无进度 */
+        }
+    }
+}
+
+/*-----------------------------------------------------------
   Function:      ai_monitor_is_alarm
   Description:   查询当前是否处于报警状态。
   Calls:         无
@@ -254,7 +307,13 @@ void ai_monitor_notify_stopped(void)
         g_alarm = 0U;  /* 停机期间不留报警 */
         g_detectCount = 0U;  /* 重新计检测次数 */
         g_result_valid = 0U;  /* 结果置为无效 */
-        g_phase = AI_MONITOR_DETECTING;  /* 知识库保留，仍是检测阶段 */
+        /* 【2026-10-22】停机不结束启动现场自适应学习阶段：
+         * 停机只是暂时没有满窗，补学计数原样保留，
+         * 重新起转后继续补。屏上阶段也跟着回到 LRN。 */
+        if ((g_siteActive == 0U) && (g_needLearn == 0U))  /* 既不补学也不从零学 */
+        {
+            g_phase = AI_MONITOR_DETECTING;  /* 知识库保留，仍是检测阶段 */
+        }
     }
 }
 
@@ -296,7 +355,13 @@ void ai_monitor_switch_level(uint8_t duty_pct)
     g_result_valid = 0U;  /* 结果置为无效 */
     g_similarity = 0U;  /* 相似度归零 */
     g_winEmpty = 0U;  /* 空窗计数归零 */
-    g_phase = AI_MONITOR_DETECTING;  /* 知识库保留，直接继续检测 */
+    /* 【2026-10-22】切档不结束启动现场自适应学习阶段：
+     * 峰峰值特征对档位不敏感（两档均值差 0.2%），
+     * 补学进度原样保留，换档后继续补。 */
+    if ((g_siteActive == 0U) && (g_needLearn == 0U))  /* 既不补学也不从零学 */
+    {
+        g_phase = AI_MONITOR_DETECTING;  /* 知识库保留，直接继续检测 */
+    }
 }
 
 /*-----------------------------------------------------------
@@ -389,14 +454,64 @@ void ai_monitor_tick(void)
         return;  /* 本次不参与报警判定 */
     }
 
-    g_phase = (st == NEAI_OK) ? AI_MONITOR_DETECTING : AI_MONITOR_ERROR;  /* 更新阶段 */
     g_result_valid = (st == NEAI_OK) ? 1U : 0U;  /* 记录本次结果是否有效 */
 
     if (st != NEAI_OK)  /* 检测报错 */
     {
+        g_phase = AI_MONITOR_ERROR;  /* 进错误阶段 */
         g_lowRun = 0U;  /* 清低分计数 */
         g_highRun = 0U;  /* 清高分计数 */
         return;  /* 本次不参与报警判定 */
+    }
+
+    /* ---- 启动现场自适应学习阶段（2026-10-22 新增）----
+     * 【放在检测之后】先把窗送去 detect() 拿到相似度，再决定要不要 learn()。
+     * 这样整个补学阶段检测能力一直在线，报警随时能触发，
+     * 不会出现「一上电就几十秒不报警」的空窗期。
+     *
+     * 【补学门限】只有相似度 >= AI_MONITOR_SITE_LEARN_MIN_SIM(32) 的窗才补学，
+     * 也就是只把「模型自己判定为正常」的样本补进知识库。
+     * 捏轴时相似度全程为 0，门限挡得死，异常不会被学成正常。
+     *
+     * 【为什么 learn() 不会破坏预训练知识】库头文件写明 learn() 在已初始化的
+     * 模型上是 "complement the knowledge base"（增量补充），不是清空重建。
+     * 2026-10-22 用板载同一个库（md5 一致）在 PC 仿真器实测：
+     * 补学 8 / 32 / 64 窗正常数据后，检出 3056/3378、误报 4/2252，
+     * 与只 init(true) 的基线逐窗完全一致。 */
+    if (g_siteActive != 0U)  /* 还在启动现场自适应学习阶段 */
+    {
+        ++g_siteSeen;  /* 看过的窗数 +1（不管这一窗补没补成功） */
+        if (g_similarity >= AI_MONITOR_SITE_LEARN_MIN_SIM)  /* 本窗判定为正常 */
+        {
+            (void)neai_anomalydetection_learn(g_neai_in);  /* 增量补学一个窗 */
+            ++g_siteDone;  /* 补学计数 +1 */
+            ++g_learned;  /* 总学习次数也 +1（ai_monitor_get_fill 报表用） */
+            if (g_siteDone >= (uint16_t)AI_MONITOR_SITE_LEARN_WINDOWS)  /* 补够了 */
+            {
+                g_siteActive = 0U;  /* 退出补学阶段 */
+                g_phase = AI_MONITOR_DETECTING;  /* 转入纯检测阶段，屏上 DET */
+            }
+            else  /* 还没补够 */
+            {
+                g_phase = AI_MONITOR_LEARNING;  /* 保持学习阶段，屏上 LRN + 进度 */
+            }
+        }
+        else  /* 本窗异常：不补学，也不推进计数，等下一窗正常的再补 */
+        {
+            g_phase = AI_MONITOR_LEARNING;  /* 阶段仍是学习，屏上 LRN */
+            /* 【超时兜底】一直遇不到正常窗时不能永远停在 LRN：
+             * 预训练知识本来就在库里，检测能力不依赖这次补学，
+             * 所以看够 AI_MONITOR_SITE_LEARN_MAX_WINDOWS 个窗就强制转检测。 */
+            if (g_siteSeen >= (uint16_t)AI_MONITOR_SITE_LEARN_MAX_WINDOWS)  /* 到时限了 */
+            {
+                g_siteActive = 0U;  /* 退出补学阶段 */
+                g_phase = AI_MONITOR_DETECTING;  /* 转入纯检测阶段，屏上 DET */
+            }
+        }
+    }
+    else  /* 已完成启动补学，或本来就不在补学阶段 */
+    {
+        g_phase = AI_MONITOR_DETECTING;  /* 阶段显示为检测中 */
     }
 
     if (g_similarity < AI_MONITOR_THRESHOLD)  /* 相似度低于阈值 = 疑似异常 */

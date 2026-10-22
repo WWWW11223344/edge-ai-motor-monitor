@@ -78,6 +78,16 @@
 #define UART_PARTIAL_IDLE_US 30000U /* 半截帧静默多久判定源端断开（微秒） */
 #define USB_CAPTURE_MS 60000U /* USB 抓包时长上限（毫秒） */
 #define NETWORK_RESUME_DELAY_MS 2000U /* 抓包结束后等多久再恢复网络（毫秒） */
+#define NETWORK_LOST_GRACE_MS 6000U /* 已连上后掉线，宽限多久才动手重连（毫秒） */
+
+/* ------------------------------------------------------------ AP 兜底热点密码
+ * 【为什么改成固定值】原来 AP 密码每次上电随机生成 14 位，只能从 USB 敲 p 才看得到。
+ *   现场演示时手机根本没法输这个密码，等于没有兜底。
+ *   改成固定密码后，手机输一次就能一直用（只读数据，风险可控）。
+ *   想换密码就在 wifi_config.h 里定义 D1_AP_PASSWORD，本文件会自动让位。 */
+#ifndef D1_AP_PASSWORD
+#define D1_AP_PASSWORD "motor12345" /* AP 兜底热点密码：手机连 Motor-xxxxxx 时输这个 */
+#endif
 
 /* ------------------------------------------------------------ 全局变量
  * 按用途分 6 组看，别被这一堆吓到：
@@ -107,6 +117,7 @@ static bool g_routesRegistered = false; /* true = 路由已注册过，避免服
 static bool g_networkResumePending = false; /* true = 抓包刚结束，等待延时后恢复网络 */
 static uint32_t g_networkResumeAtMs; /* 恢复网络的时刻，按 millis 计时 */
 static uint32_t g_staDeadline; /* 连接路由器的截止时刻，超过就转 AP 兜底 */
+static uint32_t g_staLostSinceMs; /* 发现掉线的那一刻；0 表示当前没掉线 */
 static uint32_t g_uartOverflows; /* 软件串口 FIFO 溢出次数，说明 CPU 被占太久 */
 static uint32_t g_uartBacklogEvents; /* 一次读到超过一帧的次数，说明上游有积压 */
 static uint32_t g_uartBacklogBytes; /* 上面那种情况累计多出来的字节数 */
@@ -154,10 +165,12 @@ static void print_access()
 {
     if (g_staReady) { /* STA 模式：已连上路由器 */
         const String ip = WiFi.localIP().toString(); /* 把本机 IP 转成可打印的字符串 */
-        Serial.printf("STA_SSID=%s\nSTA_IP=%s\nSTA_URL=http://%s\n",
-            D1_WIFI_SSID, ip.c_str(), ip.c_str()); /* 实参：热点名 / 本机 IP / 拼好的访问地址 */
+        /* 【为什么要打网关】手机打不开网页时，第一个要排的就是「在不在同一网段」：
+         *   手机 IP 和这里打印的网关前三段一致，才可能访问得到 STA_URL。 */
+        Serial.printf("STA_SSID=%s\nSTA_IP=%s\nSTA_GW=%s\nSTA_URL=http://%s\n",
+            D1_WIFI_SSID, ip.c_str(), WiFi.gatewayIP().toString().c_str(), ip.c_str()); /* 实参：热点名 / 本机 IP / 网关 / 拼好的访问地址 */
     } else if (g_apReady) { /* 否则看 AP 兜底模式是否就绪 */
-        Serial.printf("AP_SSID=%s\nAP_PASSWORD=%s\n", g_ssid, g_password); /* 打印热点名与随机密码，只有本地 USB 显式请求才走这里 */
+        Serial.printf("AP_SSID=%s\nAP_PASSWORD=%s\n", g_ssid, g_password); /* 打印热点名与固定密码，只有本地 USB 显式请求才走这里 */
         Serial.println("AP_URL=http://192.168.4.1");
     } else { /* 两种模式都还没就绪 */
         Serial.println("AP_NOT_READY"); /* 明确回一句「还没好」，避免上位机空等 */
@@ -201,6 +214,7 @@ static void suspend_network_for_capture()
     g_networkReady = false; /* 标记网络不可用 */
     g_staReady = false; /* 清掉 STA 就绪标记 */
     g_apReady = false; /* 清掉 AP 就绪标记 */
+    g_staLostSinceMs = 0U; /* 清掉掉线计时，抓包结束后按「重新连接」从头算 */
     WiFi.setAutoReconnect(false); /* 关掉自动重连，否则它会偷偷抢中断 */
     WiFi.disconnect(true); /* 断开当前连接 */
     WiFi.mode(WIFI_OFF); /* 彻底关掉 WiFi 射频 */
@@ -232,21 +246,19 @@ static void resume_network_after_capture()
 }
 
 /* start_ap_fallback()：兜底方案——自己开热点
- * 什么时候用：连不上指定的路由器（比如换了场地、路由器没开）。
+ * 什么时候用：连不上指定的路由器（换了场地、路由器没开），
+ *   或者连上之后又掉线、重连也救不回来。
  * 热点名 Motor-XXXXXX（XXXXXX 是芯片 ID，多块板子能认出来是哪块）。
- * 密码每次上电随机生成 14 位，字母表里去掉了容易看错的 0 O 1 l I，
- * 避免口头念密码时出错。最多允许 2 个设备同时连，固定地址 192.168.4.1。
- * 密码只在 USB 敲 p 时打印，不写在网页里。 */
+ * 密码是固定值 D1_AP_PASSWORD（原来每次上电随机 14 位、只能从 USB 敲 p 才看得到，
+ *   现场演示时手机根本连不上，等于没有兜底）。最多 2 个设备同时连，
+ *   固定地址 192.168.4.1。密码同样只在 USB 敲 p 时打印，不写进网页。 */
 static void start_ap_fallback()
 {
-    static const char alphabet[] = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789"; /* 随机密码字母表：去掉了容易看错的 0 O 1 l I */
     snprintf(g_ssid, sizeof(g_ssid), "Motor-%06X", ESP.getChipId()); /* 热点名 = Motor-6 位芯片 ID，多块板子能区分 */
-    for (size_t i = 0U; i < sizeof(g_password) - 1U; ++i) { /* 逐位生成 14 位随机密码，留 1 位给结束符 */
-        g_password[i] = alphabet[ESP.random() % (sizeof(alphabet) - 1U)]; /* 从字母表里随机取一个字符 */
-    }
-    g_password[sizeof(g_password) - 1U] = '\0'; /* 补字符串结束符 */
+    snprintf(g_password, sizeof(g_password), "%s", D1_AP_PASSWORD); /* 固定密码，手机输一次就能一直用 */
     g_apReady = WiFi.mode(WIFI_AP) && WiFi.softAP(g_ssid, g_password, 1, false, 2); /* 开热点：信道 1、不隐藏、最多 2 个设备接入 */
     if (g_apReady) { /* 热点开成功 */
+        g_staLostSinceMs = 0U; /* AP 模式下不再统计 STA 掉线 */
         start_http_server(); /* 启动网页服务器，固定地址 192.168.4.1 */
         Serial.println("AP_READY url=http://192.168.4.1; send p over USB for access");
     } else { /* 连热点都没开起来，极少见 */
@@ -255,18 +267,48 @@ static void start_ap_fallback()
 }
 
 /* service_network()：网络状态机，每轮 loop 调用一次，全程非阻塞
- *   已经就绪          -> 什么都不做，直接返回
+ *   已就绪但掉线      -> 宽限 NETWORK_LOST_GRACE_MS 后收摊重连，救不回来就转 AP 兜底
+ *   已就绪且还连着    -> 什么都不做，直接返回
  *   连上路由器了      -> 标记 STA 就绪、启动网页、打印 IP 和信号强度
  *   超时还没连上      -> 判定失败，转 AP 兜底
  * 判断超时用的是 (millis() - 截止时间) 的无符号相减，这样即使 millis() 回绕也不会算错。
- * 【小白提示】millis() 大约 49 天回绕一次，直接比较大小会出错，必须用相减。 */
+ * 【小白提示】millis() 大约 49 天回绕一次，直接比较大小会出错，必须用相减。
+ *
+ * 【2026-10-22 补掉线自愈】原来这一段是「只要就绪就 return」，从那以后再也不看
+ *   WiFi.status()。结果热点中途关掉 / 换信道时，D1 会永远停在「以为自己还连着」
+ *   的状态里：网页打不开、不会重连、不会开 AP 兜底、串口一句话都不报，
+ *   从外面看就是「板子死了」，实际它自己毫无察觉。这就是本次「手机打不开」
+ *   最难查的那一层。现在改成就绪之后照样盯着连接状态。 */
 static void service_network()
 {
-    if (g_networkReady) { /* 已经就绪：什么都不用做 */
-        return; /* 直接返回，保持非阻塞 */
+    if (g_networkReady) { /* 已经就绪：但仍然要盯着「还连不连得着」 */
+        if (g_apReady) { /* AP 兜底模式下没有「掉线」这回事 */
+            return; /* 直接返回，保持非阻塞 */
+        }
+        if (WiFi.status() == WL_CONNECTED) { /* 还连着 */
+            g_staLostSinceMs = 0U; /* 清掉掉线计时 */
+            return; /* 直接返回，保持非阻塞 */
+        }
+        if (g_staLostSinceMs == 0U) { /* 刚发现掉线：先记下时刻 */
+            g_staLostSinceMs = millis(); /* 从这一刻开始算宽限 */
+            return; /* 给协议栈自己的自动重连留点时间 */
+        }
+        if (millis() - g_staLostSinceMs < NETWORK_LOST_GRACE_MS) { /* 还在宽限期内 */
+            return; /* 继续等，先不打扰 */
+        }
+        Serial.printf("STA_LOST %lu ms; reconnecting\n", /* 明确报出来，便于现场判断 */
+            static_cast<unsigned long>(millis() - g_staLostSinceMs)); /* 实参：已经掉了多久 */
+        g_server.stop(); /* 先停服务器，避免重新 begin 时占着旧 socket */
+        g_networkReady = false; /* 标记网络不可用，网页暂时访问不了 */
+        g_staReady = false; /* 清掉 STA 就绪标记 */
+        g_staLostSinceMs = 0U; /* 掉线计时清零 */
+        WiFi.reconnect(); /* 主动让协议栈再连一次 */
+        g_staDeadline = millis() + D1_WIFI_CONNECT_TIMEOUT_MS; /* 给这一轮连接 20 秒，超时转 AP */
+        return; /* 本轮结束，下一轮由下面的「未就绪」分支接手 */
     }
     if (WiFi.status() == WL_CONNECTED) { /* 连上路由器了 */
         g_staReady = true; /* 标记 STA 就绪 */
+        g_staLostSinceMs = 0U; /* 连上了，掉线计时清零 */
         start_http_server(); /* 启动网页服务器 */
         Serial.printf("STA_READY ip=%s rssi=%d\n", /* 打印 IP 与信号强度，便于判断现场信号好坏 */
             WiFi.localIP().toString().c_str(), WiFi.RSSI()); /* 实参：本机 IP / 信号强度 dBm */

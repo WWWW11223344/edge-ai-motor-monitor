@@ -257,8 +257,8 @@ footer b{font-weight:650;font-variant-numeric:tabular-nums;color:var(--ink)}
     <span class="v"><b id="current">--</b><i>A</i></span></div>
   <div class="row"><span class="k">母线电压</span>
     <span class="v"><b id="bus">--</b><i>V</i></span></div>
-  <div class="row"><span class="k">档位 / 占空比</span>
-    <span class="v"><b id="level">--</b><i id="gearDot"></i><b id="duty"></b><i id="gearPct"></i></span></div>
+  <div class="row"><span class="k">档位</span>
+    <span class="v"><b id="level">--</b></span></div>
 </section>
 
 <footer>
@@ -275,12 +275,22 @@ var LINK={waiting:'等待数据',live:'通信正常',stale:'通信中断'};
 /* 判定主卡的三段文字：[大标题, 副标题] */
 var STATE={
   ok:['正常','AI 在线监测，未发现异常'],
-  learn:['学习中','正在建立基准，保持正常运转约 37 秒'],
+  learn:['学习中','正在建立基准，保持正常运转约 10 秒'],
   alarm:['异常','检测到状态异常，请检查电机负载'],
   idle:['待机','等待电机启动'],
   off:['AI 未启用','固件未加载异常检测模型'],
   err:['推理故障','AI 运行异常，建议重启设备']
 };
+/* 档位号 -> 屏上文字。与 OLED 底条(ui.c)同一套口径：
+ *   0      停机档   -> OFF
+ *   1 / 2  工作档   -> L1 / L2
+ *   0xFE   自动扫描 -> MIN
+ * 板上传来的 level 就是档位号，占空比是另一回事，这里不显示。 */
+function levelText(lv){
+  if(lv===0){return 'OFF';}
+  if(lv===0xFE){return 'MIN';}
+  return 'L'+lv;
+}
 /* 当前在用的三路测量值有效位：bit0 电流 | bit4 转速 | bit5 母线电压
  * （加速度三位已随 MPU6050 摘除，恒为 0，不再参与判断） */
 var CH_CURRENT=0x01,CH_SPEED=0x10,CH_BUS=0x20;
@@ -305,9 +315,6 @@ function clearReadings(){
   el('uptime').textContent='--';
   setDrBar(null);   /* 条回到空槽，不给「0 是安全」的错觉 */
   el('level').textContent='--';
-  el('duty').textContent='';
-  el('gearDot').textContent='';
-  el('gearPct').textContent='';
 }
 /* dR 进度条：长度 = dR / 门限(1.0)，颜色分三档。
  * 满格 = 已越门限。无效时给中性灰而不是绿色 —— 绿色会被读成「安全」。 */
@@ -454,10 +461,13 @@ function show(d){
   setDrBar(dr);
   /* 已运行秒数：对齐 OLED 底条上的 T:xxx s */
   el('uptime').textContent=(typeof d.uptime_ms==='number')?Math.floor(d.uptime_ms/1000):'--';
-  el('level').textContent='L'+d.level;
-  el('duty').textContent=d.duty;
-  el('gearDot').textContent='·';
-  el('gearPct').textContent='%';
+  /* 档位显示：与 OLED 底条完全同一口径 —— L1 / L2 / OFF / MIN。
+   * 【2026-10-22 改】原来这里显示 "L1 · 58 %"，把内部标定用的占空比
+   * 直接暴露在页面上。占空比是标定参数（58/64），不是使用者要操作的东西，
+   * 答辩时观众看不懂 58 是什么。现在只显示使用者真正关心的「第几档」，
+   * 占空比仍然保留在 /status 的 duty 字段里（计算归一化 R 要用），
+   * 但页面上不显示了。 */
+  el('level').textContent=levelText(d.level);
 
   var st=pickState(d);
   setState(st);
